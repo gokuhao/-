@@ -1,0 +1,16 @@
+:root {
+  font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+  color: #f5f2e9;
+  background: #151816;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+.app-shell { min-height: 100vh; display: grid; place-items: center; padding: 32px; background: radial-gradient(circle at top, #34463a, #151816 64%); }
+.welcome-card { width: min(100%, 420px); padding: 42px 32px; text-align: center; border: 1px solid #ffffff1f; border-radius: 28px; background: #202620d9; box-shadow: 0 24px 80px #0008; }
+.pet-placeholder { width: 104px; height: 104px; margin: 0 auto 24px; display: grid; place-items: center; border-radius: 42% 42% 48% 48%; color: #243126; background: #c9e7ad; font-size: 42px; font-weight: 800; box-shadow: 0 12px 36px #9fd47d33; }
+.eyebrow { margin: 0 0 12px; color: #a9c99b; font-size: 12px; letter-spacing: .16em; }
+h1 { margin: 0 0 14px; font-size: 30px; }
+.welcome-card > p:not(.eyebrow) { margin: 0 auto 26px; color: #c9d0c8; line-height: 1.7; }
+.status { display: inline-block; padding: 8px 14px; border-radius: 999px; color: #cae2bf; background: #a6d58e1a; font-size: 13px; }
