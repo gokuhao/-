@@ -16,6 +16,8 @@ export function App(): React.JSX.Element {
   const [todayPlan, setTodayPlan] = useState<StepBeastTodayPlan | null>(null);
   const [petProfile, setPetProfile] = useState<StepBeastPetProfile | null>(null);
   const [rewardNotice, setRewardNotice] = useState<string | null>(null);
+  const [hermesStatus, setHermesStatus] = useState<StepBeastHermesStatus | null>(null);
+  const [hermesChecking, setHermesChecking] = useState(false);
 
   const taskRoles = Object.fromEntries(
     (todayPlan?.items ?? []).map((item) => [item.task.id, item.role]),
@@ -47,6 +49,12 @@ export function App(): React.JSX.Element {
         }
       })
       .catch((error: unknown) => setTaskError(errorMessage(error)));
+  }, []);
+
+  useEffect(() => {
+    void refreshHermesStatus();
+    const timer = window.setInterval(() => void refreshHermesStatus(), 30_000);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -204,6 +212,24 @@ export function App(): React.JSX.Element {
     }
   }
 
+  async function refreshHermesStatus(): Promise<void> {
+    if (!window.stepBeast) return;
+    setHermesChecking(true);
+    try {
+      setHermesStatus(await window.stepBeast.hermes.getStatus());
+    } catch {
+      setHermesStatus({
+        state: "offline",
+        message: "Hermes 状态检查失败",
+        baseUrl: "http://127.0.0.1:8642",
+        apiKeyConfigured: false,
+        checkedAt: new Date().toISOString(),
+      });
+    } finally {
+      setHermesChecking(false);
+    }
+  }
+
   return (
     <main className={`desktop-pet ${expanded ? "desktop-pet--expanded" : ""}`}>
       {expanded && (
@@ -213,6 +239,8 @@ export function App(): React.JSX.Element {
           activeTask={activeTask}
           taskError={taskError}
           petProfile={petProfile}
+          hermesStatus={hermesStatus}
+          hermesChecking={hermesChecking}
           focusActive={focusActive}
           focusPaused={focusPaused}
           remainingSeconds={remainingSeconds}
@@ -222,6 +250,7 @@ export function App(): React.JSX.Element {
           onCompleteTask={completeTask}
           onSetTaskRole={setTaskRole}
           onToggleFocus={() => void toggleFocus()}
+          onRetryHermes={() => void refreshHermesStatus()}
           onClose={() => setExpanded(false)}
           onQuit={() => window.stepBeast?.window.close()}
         />

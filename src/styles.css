@@ -125,6 +125,13 @@ button { font: inherit; }
 .timer { display: block; font-size: 27px; letter-spacing: .04em; }
 .primary-button { min-width: 74px; padding: 10px 16px; border: 0; border-radius: 12px; color: #1b291d; background: #bfe49e; font-weight: 700; cursor: pointer; }
 .primary-button:hover { background: #cef0b0; }
+.hermes-status { display: flex; width: 100%; align-items: center; gap: 7px; margin-top: 12px; padding: 7px 9px; border: 0; border-radius: 9px; color: #98a395; background: #ffffff08; cursor: pointer; font-size: 10px; text-align: left; }
+.hermes-status > span:nth-child(2) { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hermes-status small { color: #71806e; }
+.hermes-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #6f776e; box-shadow: 0 0 0 3px #6f776e20; }
+.hermes-status--ready .hermes-dot { background: #9bd378; box-shadow: 0 0 0 3px #9bd37824; }
+.hermes-status--online .hermes-dot { background: #e5bd6f; box-shadow: 0 0 0 3px #e5bd6f24; }
+.hermes-status--misconfigured .hermes-dot { background: #e38a77; box-shadow: 0 0 0 3px #e38a7724; }
 .panel-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 17px; color: #849081; font-size: 11px; }
 .growth-status { display: grid; gap: 5px; min-width: 150px; }
 .xp-track { display: block; height: 4px; overflow: hidden; border-radius: 999px; background: #ffffff12; }

@@ -7,6 +7,8 @@ type ActionPanelProps = {
   activeTask: StepBeastTask | null;
   taskError: string | null;
   petProfile: StepBeastPetProfile | null;
+  hermesStatus: StepBeastHermesStatus | null;
+  hermesChecking: boolean;
   focusActive: boolean;
   focusPaused: boolean;
   remainingSeconds: number;
@@ -16,6 +18,7 @@ type ActionPanelProps = {
   onCompleteTask: (id: string) => Promise<void>;
   onSetTaskRole: (id: string, role: StepBeastPlanRole | null) => Promise<void>;
   onToggleFocus: () => void;
+  onRetryHermes: () => void;
   onClose: () => void;
   onQuit: () => void;
 };
@@ -32,6 +35,8 @@ export function ActionPanel({
   activeTask,
   taskError,
   petProfile,
+  hermesStatus,
+  hermesChecking,
   focusActive,
   focusPaused,
   remainingSeconds,
@@ -41,6 +46,7 @@ export function ActionPanel({
   onCompleteTask,
   onSetTaskRole,
   onToggleFocus,
+  onRetryHermes,
   onClose,
   onQuit,
 }: ActionPanelProps): React.JSX.Element {
@@ -246,6 +252,19 @@ export function ActionPanel({
           {focusActive ? "暂停" : focusPaused ? "继续" : "开始"}
         </button>
       </div>
+
+      <button
+        className={`hermes-status hermes-status--${hermesStatus?.state ?? "offline"}`}
+        type="button"
+        onClick={onRetryHermes}
+        disabled={hermesChecking}
+        title={hermesStatus?.baseUrl}
+        aria-label="重新检查 Hermes 连接"
+      >
+        <span className="hermes-dot" />
+        <span>{hermesChecking ? "正在检查 Hermes" : hermesStatus?.message ?? "Hermes 状态未知"}</span>
+        <small>重试</small>
+      </button>
 
       <footer className="panel-footer">
         <div className="growth-status">
