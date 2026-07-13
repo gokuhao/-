@@ -26,6 +26,9 @@ export function App(): React.JSX.Element {
   const [confirmingDailyPlan, setConfirmingDailyPlan] = useState(false);
   const [obsidianStatus, setObsidianStatus] = useState<StepBeastObsidianStatus | null>(null);
   const [obsidianChecking, setObsidianChecking] = useState(false);
+  const [projectProposal, setProjectProposal] = useState<StepBeastObsidianProjectProposal | null>(null);
+  const [projectSyncing, setProjectSyncing] = useState(false);
+  const [projectConfirming, setProjectConfirming] = useState(false);
 
   const taskRoles = Object.fromEntries(
     (todayPlan?.items ?? []).map((item) => [item.task.id, item.role]),
@@ -335,6 +338,38 @@ export function App(): React.JSX.Element {
     }
   }
 
+  async function proposeProjectSync(): Promise<void> {
+    if (!window.stepBeast) return;
+    setTaskError(null);
+    setProjectSyncing(true);
+    setPetState("thinking");
+    try {
+      setProjectProposal(await window.stepBeast.obsidian.proposeProjectSync());
+    } catch (error) {
+      setTaskError(errorMessage(error));
+      setPetState("idle");
+    } finally {
+      setProjectSyncing(false);
+    }
+  }
+
+  async function confirmProjectSync(selectedCandidateKeys: string[]): Promise<void> {
+    if (!window.stepBeast || !projectProposal) return;
+    setTaskError(null);
+    setProjectConfirming(true);
+    try {
+      const result = await window.stepBeast.projects.confirmSync(projectProposal, selectedCandidateKeys);
+      setTasks(await window.stepBeast.tasks.list());
+      setProjectProposal(null);
+      setRewardNotice(`已同步 ${result.projects.length} 个项目`);
+      setPetState("happy");
+    } catch (error) {
+      setTaskError(errorMessage(error));
+    } finally {
+      setProjectConfirming(false);
+    }
+  }
+
   return (
     <main className={`desktop-pet ${expanded ? "desktop-pet--expanded" : ""}`}>
       {expanded && (
@@ -348,6 +383,9 @@ export function App(): React.JSX.Element {
           hermesChecking={hermesChecking}
           obsidianStatus={obsidianStatus}
           obsidianChecking={obsidianChecking}
+          projectProposal={projectProposal}
+          projectSyncing={projectSyncing}
+          projectConfirming={projectConfirming}
           decompositionProposal={decompositionProposal}
           decomposingTaskId={decomposingTaskId}
           confirmingProposal={confirmingProposal}
@@ -365,6 +403,12 @@ export function App(): React.JSX.Element {
           onToggleFocus={() => void toggleFocus()}
           onRetryHermes={() => void refreshHermesStatus()}
           onRetryObsidian={() => void refreshObsidianStatus()}
+          onProposeProjectSync={() => void proposeProjectSync()}
+          onConfirmProjectSync={(selectedCandidateKeys) => void confirmProjectSync(selectedCandidateKeys)}
+          onCancelProjectSync={() => {
+            setProjectProposal(null);
+            setPetState("idle");
+          }}
           onDecomposeTask={(id) => void decomposeTask(id)}
           onConfirmDecomposition={() => void confirmDecomposition()}
           onCancelDecomposition={() => {

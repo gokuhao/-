@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 
 type ActionPanelProps = {
@@ -11,6 +11,9 @@ type ActionPanelProps = {
   hermesChecking: boolean;
   obsidianStatus: StepBeastObsidianStatus | null;
   obsidianChecking: boolean;
+  projectProposal: StepBeastObsidianProjectProposal | null;
+  projectSyncing: boolean;
+  projectConfirming: boolean;
   decompositionProposal: StepBeastDecompositionProposal | null;
   decomposingTaskId: string | null;
   confirmingProposal: boolean;
@@ -28,6 +31,9 @@ type ActionPanelProps = {
   onToggleFocus: () => void;
   onRetryHermes: () => void;
   onRetryObsidian: () => void;
+  onProposeProjectSync: () => void;
+  onConfirmProjectSync: (selectedCandidateKeys: string[]) => void;
+  onCancelProjectSync: () => void;
   onDecomposeTask: (id: string) => void;
   onConfirmDecomposition: () => void;
   onCancelDecomposition: () => void;
@@ -54,6 +60,9 @@ export function ActionPanel({
   hermesChecking,
   obsidianStatus,
   obsidianChecking,
+  projectProposal,
+  projectSyncing,
+  projectConfirming,
   decompositionProposal,
   decomposingTaskId,
   confirmingProposal,
@@ -71,6 +80,9 @@ export function ActionPanel({
   onToggleFocus,
   onRetryHermes,
   onRetryObsidian,
+  onProposeProjectSync,
+  onConfirmProjectSync,
+  onCancelProjectSync,
   onDecomposeTask,
   onConfirmDecomposition,
   onCancelDecomposition,
@@ -89,6 +101,7 @@ export function ActionPanel({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [changingRoleId, setChangingRoleId] = useState<string | null>(null);
+  const [selectedProjectTasks, setSelectedProjectTasks] = useState<string[]>([]);
   const mainCount = Object.values(taskRoles).filter((role) => role === "main").length;
   const supportCount = Object.values(taskRoles).filter((role) => role === "support").length;
   const level = petProfile?.level ?? 1;
@@ -99,6 +112,10 @@ export function ActionPanel({
   const displayedTasks = [...tasks]
     .sort((left, right) => roleRank(taskRoles[left.id]) - roleRank(taskRoles[right.id]))
     .slice(0, 3);
+
+  useEffect(() => {
+    setSelectedProjectTasks([]);
+  }, [projectProposal?.proposalId]);
 
   async function submitTask(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -315,13 +332,13 @@ export function ActionPanel({
         <button
           className={`hermes-status obsidian-status--${obsidianStatus?.state ?? "unavailable"}`}
           type="button"
-          onClick={onRetryObsidian}
-          disabled={obsidianChecking}
+          onClick={obsidianStatus?.state === "ready" ? onProposeProjectSync : onRetryObsidian}
+          disabled={obsidianChecking || projectSyncing}
           title={obsidianStatus?.vaultPath ?? undefined}
-          aria-label="重新索引 Obsidian Vault"
+          aria-label={obsidianStatus?.state === "ready" ? "读取 Obsidian 项目提案" : "重新检查 Obsidian Vault"}
         >
           <span className="hermes-dot" />
-          <span>{obsidianChecking ? "索引 Obsidian" : obsidianStatus?.message ?? "Obsidian 状态未知"}</span>
+          <span>{projectSyncing ? "读取项目…" : obsidianChecking ? "索引 Obsidian" : obsidianStatus?.message ?? "Obsidian 状态未知"}</span>
         </button>
       </div>
 
@@ -388,6 +405,59 @@ export function ActionPanel({
           </div>
         </section>
       )}
+
+      {projectProposal && (
+        <section className="proposal-overlay project-sync-proposal" aria-label="Obsidian 项目同步提案">
+          <p className="panel-kicker">Obsidian 项目同步</p>
+          <h2>{projectProposal.summary}</h2>
+          <div className="project-sync-scroll">
+            <div className="project-proposal-list">
+              {projectProposal.projects.map((project) => (
+                <article key={project.sourcePath}>
+                  <div>
+                    <strong>{project.name}</strong>
+                    <span>{projectCategoryLabel(project.category)} · {projectStatusLabel(project.status)}</span>
+                  </div>
+                  <small>{project.currentStage ?? project.goal ?? "未找到明确阶段说明"}</small>
+                </article>
+              ))}
+            </div>
+            <fieldset className="project-task-candidates">
+              <legend>可选任务候选（默认不创建）</legend>
+              {projectProposal.taskCandidates.length === 0 ? (
+                <small>当前项目中没有找到明确的下一步行动。</small>
+              ) : projectProposal.taskCandidates.map((candidate) => (
+                <label key={candidate.candidateKey}>
+                  <input
+                    type="checkbox"
+                    checked={selectedProjectTasks.includes(candidate.candidateKey)}
+                    disabled={!selectedProjectTasks.includes(candidate.candidateKey) && selectedProjectTasks.length >= 5}
+                    onChange={() => setSelectedProjectTasks((current) => current.includes(candidate.candidateKey)
+                      ? current.filter((key) => key !== candidate.candidateKey)
+                      : [...current, candidate.candidateKey])}
+                  />
+                  <span>
+                    <strong>{candidate.title}</strong>
+                    <small>{candidate.projectName} · {candidate.estimatedMinutes} 分钟</small>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+          </div>
+          <div className="proposal-actions">
+            <button type="button" onClick={onCancelProjectSync} disabled={projectConfirming}>取消</button>
+            <button
+              type="button"
+              onClick={() => onConfirmProjectSync(selectedProjectTasks)}
+              disabled={projectConfirming}
+            >
+              {projectConfirming
+                ? "同步中…"
+                : `确认同步${selectedProjectTasks.length ? `并创建 ${selectedProjectTasks.length} 个任务` : "项目"}`}
+            </button>
+          </div>
+        </section>
+      )}
     </section>
   );
 }
@@ -404,4 +474,21 @@ function isActiveTask(task: StepBeastTask): boolean {
 
 function taskTitle(tasks: StepBeastTask[], taskId: string): string {
   return tasks.find((task) => task.id === taskId)?.title ?? "任务已不可用";
+}
+
+function projectCategoryLabel(category: StepBeastProjectCategory): string {
+  if (category === "current") return "当前项目";
+  if (category === "support") return "支撑系统";
+  return "暂停保留";
+}
+
+function projectStatusLabel(status: StepBeastProjectStatus): string {
+  const labels: Record<StepBeastProjectStatus, string> = {
+    active: "进行中",
+    testing: "验证中",
+    paused: "已暂停",
+    completed: "已完成",
+    archived: "已归档",
+  };
+  return labels[status];
 }
