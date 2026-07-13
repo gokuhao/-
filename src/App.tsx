@@ -13,13 +13,23 @@ export function App(): React.JSX.Element {
   const [remainingSeconds, setRemainingSeconds] = useState(FOCUS_SECONDS);
   const [tasks, setTasks] = useState<StepBeastTask[]>([]);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [todayPlan, setTodayPlan] = useState<StepBeastTodayPlan | null>(null);
 
-  const activeTask = tasks.find((task) => task.status === "todo" || task.status === "doing") ?? null;
+  const taskRoles = Object.fromEntries(
+    (todayPlan?.items ?? []).map((item) => [item.task.id, item.role]),
+  ) as Partial<Record<string, StepBeastPlanRole>>;
+  const mainTaskId = todayPlan?.items.find((item) => item.role === "main")?.task.id;
+  const activeTask = tasks.find((task) => task.id === mainTaskId && (task.status === "todo" || task.status === "doing"))
+    ?? tasks.find((task) => task.status === "todo" || task.status === "doing")
+    ?? null;
 
   useEffect(() => {
     if (!window.stepBeast) return;
-    window.stepBeast.tasks.list()
-      .then(setTasks)
+    Promise.all([window.stepBeast.tasks.list(), window.stepBeast.plan.getToday()])
+      .then(([storedTasks, storedPlan]) => {
+        setTasks(storedTasks);
+        setTodayPlan(storedPlan);
+      })
       .catch((error: unknown) => setTaskError(errorMessage(error)));
   }, []);
 
@@ -73,6 +83,10 @@ export function App(): React.JSX.Element {
       setTasks((current) => current
         .map((task) => task.id === id ? completed : task)
         .sort((left, right) => Number(left.status === "completed") - Number(right.status === "completed")));
+      setTodayPlan((current) => current ? {
+        ...current,
+        items: current.items.map((item) => item.task.id === id ? { ...item, task: completed } : item),
+      } : current);
       setPetState("happy");
       if (activeTask?.id === id) {
         setFocusActive(false);
@@ -107,6 +121,10 @@ export function App(): React.JSX.Element {
     try {
       await window.stepBeast.tasks.delete(id);
       setTasks((current) => current.filter((task) => task.id !== id));
+      setTodayPlan((current) => current ? {
+        ...current,
+        items: current.items.filter((item) => item.task.id !== id),
+      } : current);
       if (activeTask?.id === id) {
         setFocusActive(false);
         setRemainingSeconds(FOCUS_SECONDS);
@@ -118,11 +136,24 @@ export function App(): React.JSX.Element {
     }
   }
 
+  async function setTaskRole(id: string, role: StepBeastPlanRole | null): Promise<void> {
+    if (!window.stepBeast) throw new Error("请在步步兽桌面应用中设置今日计划");
+    setTaskError(null);
+    try {
+      const plan = await window.stepBeast.plan.setRole(id, role);
+      setTodayPlan(plan);
+    } catch (error) {
+      setTaskError(errorMessage(error));
+      throw error;
+    }
+  }
+
   return (
     <main className={`desktop-pet ${expanded ? "desktop-pet--expanded" : ""}`}>
       {expanded && (
         <ActionPanel
           tasks={tasks}
+          taskRoles={taskRoles}
           activeTask={activeTask}
           taskError={taskError}
           focusActive={focusActive}
@@ -131,6 +162,7 @@ export function App(): React.JSX.Element {
           onUpdateTask={updateTask}
           onDeleteTask={deleteTask}
           onCompleteTask={completeTask}
+          onSetTaskRole={setTaskRole}
           onToggleFocus={toggleFocus}
           onClose={() => setExpanded(false)}
           onQuit={() => window.stepBeast?.window.close()}

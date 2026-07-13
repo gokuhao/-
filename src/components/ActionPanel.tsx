@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 
 type ActionPanelProps = {
   tasks: StepBeastTask[];
+  taskRoles: Partial<Record<string, StepBeastPlanRole>>;
   activeTask: StepBeastTask | null;
   taskError: string | null;
   focusActive: boolean;
@@ -11,6 +12,7 @@ type ActionPanelProps = {
   onUpdateTask: (id: string, title: string) => Promise<void>;
   onDeleteTask: (id: string) => Promise<void>;
   onCompleteTask: (id: string) => Promise<void>;
+  onSetTaskRole: (id: string, role: StepBeastPlanRole | null) => Promise<void>;
   onToggleFocus: () => void;
   onClose: () => void;
   onQuit: () => void;
@@ -24,6 +26,7 @@ function formatTime(totalSeconds: number): string {
 
 export function ActionPanel({
   tasks,
+  taskRoles,
   activeTask,
   taskError,
   focusActive,
@@ -32,6 +35,7 @@ export function ActionPanel({
   onUpdateTask,
   onDeleteTask,
   onCompleteTask,
+  onSetTaskRole,
   onToggleFocus,
   onClose,
   onQuit,
@@ -44,6 +48,12 @@ export function ActionPanel({
   const [editingTitle, setEditingTitle] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [changingRoleId, setChangingRoleId] = useState<string | null>(null);
+  const mainCount = Object.values(taskRoles).filter((role) => role === "main").length;
+  const supportCount = Object.values(taskRoles).filter((role) => role === "support").length;
+  const displayedTasks = [...tasks]
+    .sort((left, right) => roleRank(taskRoles[left.id]) - roleRank(taskRoles[right.id]))
+    .slice(0, 3);
 
   async function submitTask(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -102,11 +112,22 @@ export function ActionPanel({
     }
   }
 
+  async function setTaskRole(id: string, role: string): Promise<void> {
+    setChangingRoleId(id);
+    try {
+      await onSetTaskRole(id, role === "main" || role === "support" ? role : null);
+    } catch {
+      // 数据库规则错误由父组件展示，受控选项会保持原值。
+    } finally {
+      setChangingRoleId(null);
+    }
+  }
+
   return (
     <section className="action-panel" aria-label="步步兽行动面板">
       <header className="panel-header">
         <div>
-          <p className="panel-kicker">今天只推进一件事</p>
+          <p className="panel-kicker">{activeTask && taskRoles[activeTask.id] === "main" ? "今日主线" : "今天只推进一件事"}</p>
           <h1>{activeTask?.title ?? "先添加今天最重要的任务"}</h1>
         </div>
         <div className="panel-actions">
@@ -139,10 +160,15 @@ export function ActionPanel({
 
       {taskError && <p className="task-error" role="alert">{taskError}</p>}
 
+      <div className="plan-status" aria-label="今日计划状态">
+        <span>主线 {mainCount}/1</span>
+        <span>辅助 {supportCount}/2</span>
+      </div>
+
       <div className="task-list" aria-label="任务清单">
         {tasks.length === 0 ? (
           <p className="task-empty">任务清单还是空的。</p>
-        ) : tasks.slice(0, 3).map((task) => editingId === task.id ? (
+        ) : displayedTasks.map((task) => editingId === task.id ? (
           <form className="task-edit-form" key={task.id} onSubmit={(event) => void submitTaskEdit(event, task.id)}>
             <input
               value={editingTitle}
@@ -158,6 +184,16 @@ export function ActionPanel({
           <div className={`task-item task-item--${task.status}`} key={task.id}>
             <span title={task.title}>{task.title}</span>
             <div className="task-item-actions">
+              <select
+                value={taskRoles[task.id] ?? ""}
+                disabled={task.status === "completed" || changingRoleId === task.id}
+                onChange={(event) => void setTaskRole(task.id, event.target.value)}
+                aria-label={`设置今日角色：${task.title}`}
+              >
+                <option value="">任务池</option>
+                <option value="main">主线</option>
+                <option value="support">辅助</option>
+              </select>
               {task.status !== "completed" && (
                 <button
                   type="button"
@@ -205,4 +241,10 @@ export function ActionPanel({
       </footer>
     </section>
   );
+}
+
+function roleRank(role: StepBeastPlanRole | undefined): number {
+  if (role === "main") return 0;
+  if (role === "support") return 1;
+  return 2;
 }
