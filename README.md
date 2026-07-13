@@ -2,7 +2,7 @@
 
 步步兽是一款 Windows 本地 AI 桌面宠物。它用宠物作为人格化入口，把任务、专注、成长反馈、Hermes 助理与 Obsidian 长期记忆逐步连接成个人执行系统。
 
-当前状态：**Milestone 6 Task 6.1 已完成：Sprout Cat 已能安全只读索引 Obsidian Vault。**
+当前状态：**Milestone 6 Task 6.2 已完成：Sprout Cat 已能从 Obsidian 生成项目同步与任务候选提案。**
 
 ## 当前可用功能
 
@@ -20,6 +20,8 @@
 - 支持让 Hermes 从未完成任务中生成“1 条主线 + 最多 2 条辅助”计划，预览理由并确认后才原子替换今日计划。
 - 支持只读索引用户授权的完整 Obsidian Vault，解析 Markdown 标题、frontmatter、标签、目录、修改时间和文件大小。
 - 面板同时显示 Hermes 与 Obsidian 连接状态，点击 Obsidian 状态可以手动重新索引。
+- 支持从 `type: project_index` 项目总览识别当前项目、支撑系统和暂停项目，解析项目状态、目标与阶段。
+- 支持预览明确写在项目笔记中的下一步行动；任务候选默认不选择，确认后才与项目档案一起写入 SQLite。
 - 尊重系统的“减少动态效果”设置。
 
 ## 宠物动画为什么使用 spritesheet
