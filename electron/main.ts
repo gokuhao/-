@@ -139,9 +139,19 @@ ipcMain.handle("task:create", (event, input: { title: string; estimatedMinutes?:
   return taskRepository.create(input);
 });
 
+ipcMain.handle("task:update", (event, id: string, input: { title: string; estimatedMinutes?: number | null; nextAction?: string | null }) => {
+  if (!senderWindow(event) || !taskRepository) throw new Error("任务系统尚未准备好");
+  return taskRepository.update(id, input);
+});
+
 ipcMain.handle("task:complete", (event, id: string) => {
   if (!senderWindow(event) || !taskRepository) throw new Error("任务系统尚未准备好");
   return taskRepository.complete(id);
+});
+
+ipcMain.handle("task:delete", (event, id: string) => {
+  if (!senderWindow(event) || !taskRepository) throw new Error("任务系统尚未准备好");
+  taskRepository.remove(id);
 });
 
 app.whenReady().then(() => {

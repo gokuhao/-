@@ -15,6 +15,9 @@ contextBridge.exposeInMainWorld("stepBeast", {
     list: () => ipcRenderer.invoke("task:list"),
     create: (input: { title: string; estimatedMinutes?: number | null; nextAction?: string | null }) =>
       ipcRenderer.invoke("task:create", input),
+    update: (id: string, input: { title: string; estimatedMinutes?: number | null; nextAction?: string | null }) =>
+      ipcRenderer.invoke("task:update", id, input),
     complete: (id: string) => ipcRenderer.invoke("task:complete", id),
+    delete: (id: string) => ipcRenderer.invoke("task:delete", id),
   },
 });

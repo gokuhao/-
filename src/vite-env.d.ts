@@ -13,7 +13,9 @@ interface Window {
     tasks: {
       list: () => Promise<StepBeastTask[]>;
       create: (input: CreateStepBeastTaskInput) => Promise<StepBeastTask>;
+      update: (id: string, input: CreateStepBeastTaskInput) => Promise<StepBeastTask>;
       complete: (id: string) => Promise<StepBeastTask>;
+      delete: (id: string) => Promise<void>;
     };
   };
 }

@@ -21,6 +21,8 @@ export type CreateTaskInput = {
   nextAction?: string | null;
 };
 
+export type UpdateTaskInput = CreateTaskInput;
+
 type TaskRow = {
   id: string;
   title: string;
@@ -55,18 +57,7 @@ export class TaskRepository {
   }
 
   create(input: CreateTaskInput): TaskRecord {
-    const title = input.title?.trim();
-    if (!title || title.length > 120) {
-      throw new Error("任务标题需要填写，且不能超过 120 个字");
-    }
-
-    const estimatedMinutes = input.estimatedMinutes ?? null;
-    if (estimatedMinutes !== null
-      && (!Number.isInteger(estimatedMinutes) || estimatedMinutes < 1 || estimatedMinutes > 480)) {
-      throw new Error("预计时间需要是 1 到 480 分钟的整数");
-    }
-
-    const nextAction = input.nextAction?.trim() || null;
+    const { title, estimatedMinutes, nextAction } = normalizeTaskInput(input);
     const id = randomUUID();
     const now = new Date().toISOString();
     this.database.prepare(`
@@ -75,6 +66,19 @@ export class TaskRepository {
         source, created_at, updated_at
       ) VALUES (?, ?, 'todo', ?, ?, 10, 'manual', ?, ?)
     `).run(id, title, estimatedMinutes, nextAction, now, now);
+    return this.getById(id);
+  }
+
+  update(id: string, input: UpdateTaskInput): TaskRecord {
+    if (!id) throw new Error("缺少任务 ID");
+    this.getById(id);
+    const { title, estimatedMinutes, nextAction } = normalizeTaskInput(input);
+    const now = new Date().toISOString();
+    this.database.prepare(`
+      UPDATE tasks
+      SET title = ?, estimated_minutes = ?, next_action = ?, updated_at = ?
+      WHERE id = ? AND deleted_at IS NULL
+    `).run(title, estimatedMinutes, nextAction, now, id);
     return this.getById(id);
   }
 
@@ -90,6 +94,17 @@ export class TaskRepository {
       WHERE id = ? AND deleted_at IS NULL
     `).run(now, now, id);
     return this.getById(id);
+  }
+
+  remove(id: string): void {
+    if (!id) throw new Error("缺少任务 ID");
+    this.getById(id);
+    const now = new Date().toISOString();
+    this.database.prepare(`
+      UPDATE tasks
+      SET deleted_at = ?, updated_at = ?
+      WHERE id = ? AND deleted_at IS NULL
+    `).run(now, now, id);
   }
 
   close(): void {
@@ -137,6 +152,29 @@ export class TaskRepository {
       VALUES (1, 'create_tasks', datetime('now'));
     `);
   }
+}
+
+function normalizeTaskInput(input: CreateTaskInput): {
+  title: string;
+  estimatedMinutes: number | null;
+  nextAction: string | null;
+} {
+  const title = input.title?.trim();
+  if (!title || title.length > 120) {
+    throw new Error("任务标题需要填写，且不能超过 120 个字");
+  }
+
+  const estimatedMinutes = input.estimatedMinutes ?? null;
+  if (estimatedMinutes !== null
+    && (!Number.isInteger(estimatedMinutes) || estimatedMinutes < 1 || estimatedMinutes > 480)) {
+    throw new Error("预计时间需要是 1 到 480 分钟的整数");
+  }
+
+  return {
+    title,
+    estimatedMinutes,
+    nextAction: input.nextAction?.trim() || null,
+  };
 }
 
 function mapTaskRow(row: TaskRow): TaskRecord {
