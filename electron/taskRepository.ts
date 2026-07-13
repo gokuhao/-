@@ -52,6 +52,19 @@ export type TodayPlan = {
   items: TodayPlanItem[];
 };
 
+export type PlanningCandidate = TaskRecord & {
+  dailyRole: PlanRole | null;
+};
+
+export type ConfirmDailyPlanInput = {
+  proposalId: string;
+  requestId: string;
+  summary: string;
+  reasoning: string;
+  mainTaskId: string;
+  supportTaskIds: string[];
+};
+
 export type PetProfile = {
   id: string;
   name: string;
@@ -269,6 +282,91 @@ export class TaskRepository {
     return this.readPlan(localDateKey());
   }
 
+  getPlanningCandidates(limit = 20): PlanningCandidate[] {
+    const safeLimit = Math.min(20, Math.max(1, Math.trunc(limit)));
+    const roles = new Map(this.getTodayPlan().items.map((item) => [item.task.id, item.role]));
+    return this.list()
+      .filter((task) => task.status === "todo" || task.status === "doing")
+      .slice(0, safeLimit)
+      .map((task) => ({ ...task, dailyRole: roles.get(task.id) ?? null }));
+  }
+
+  confirmDailyPlan(proposal: ConfirmDailyPlanInput): TodayPlan {
+    const normalized = validateDailyPlanProposal(proposal);
+    const existing = this.database.prepare(`
+      SELECT plan_date FROM daily_plan_proposals WHERE proposal_id = ?
+    `).get(normalized.proposalId) as { plan_date: string } | undefined;
+    if (existing) return this.readPlan(existing.plan_date);
+
+    const selectedIds = [normalized.mainTaskId, ...normalized.supportTaskIds];
+    for (const taskId of selectedIds) {
+      const task = this.getById(taskId);
+      if (task.status !== "todo" && task.status !== "doing") {
+        throw new Error("AI 计划只能包含未完成任务");
+      }
+    }
+
+    const date = localDateKey();
+    const now = new Date().toISOString();
+    this.database.exec("BEGIN IMMEDIATE");
+    try {
+      let plan = this.database.prepare("SELECT id FROM daily_plans WHERE plan_date = ?")
+        .get(date) as { id: string } | undefined;
+      if (!plan) {
+        plan = { id: randomUUID() };
+        this.database.prepare(`
+          INSERT INTO daily_plans (id, plan_date, created_at, updated_at)
+          VALUES (?, ?, ?, ?)
+        `).run(plan.id, date, now, now);
+      }
+
+      // 用户确认后才整体替换，确保 1 条主线和最多 2 条辅助任务同时生效。
+      this.database.prepare("DELETE FROM daily_plan_items WHERE daily_plan_id = ?").run(plan.id);
+      const insertItem = this.database.prepare(`
+        INSERT INTO daily_plan_items (id, daily_plan_id, task_id, role, sort_order, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+      insertItem.run(randomUUID(), plan.id, normalized.mainTaskId, "main", 0, now);
+      normalized.supportTaskIds.forEach((taskId, index) => {
+        insertItem.run(randomUUID(), plan.id, taskId, "support", index, now);
+      });
+
+      this.database.prepare("UPDATE daily_plans SET updated_at = ? WHERE id = ?").run(now, plan.id);
+      this.database.prepare(`
+        INSERT INTO daily_plan_proposals (
+          proposal_id, request_id, plan_date, summary, reasoning,
+          main_task_id, support_task_ids_json, confirmed_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        normalized.proposalId,
+        normalized.requestId,
+        date,
+        normalized.summary,
+        normalized.reasoning,
+        normalized.mainTaskId,
+        JSON.stringify(normalized.supportTaskIds),
+        now,
+      );
+      this.database.prepare(`
+        INSERT INTO events (id, event_type, entity_type, entity_id, payload_json, created_at)
+        VALUES (?, 'DailyPlanConfirmed', 'daily_plan', ?, ?, ?)
+      `).run(
+        randomUUID(), plan.id,
+        JSON.stringify({
+          proposalId: normalized.proposalId,
+          mainTaskId: normalized.mainTaskId,
+          supportTaskIds: normalized.supportTaskIds,
+        }),
+        now,
+      );
+      this.database.exec("COMMIT");
+    } catch (error) {
+      this.database.exec("ROLLBACK");
+      throw error;
+    }
+    return this.readPlan(date);
+  }
+
   setTodayRole(taskId: string, role: PlanRole | null): TodayPlan {
     if (role !== null && role !== "main" && role !== "support") {
       throw new Error("无效的今日任务角色");
@@ -480,6 +578,34 @@ export class TaskRepository {
         throw error;
       }
     }
+
+    const dailyPlanProposalMigration = this.database.prepare(`
+      SELECT version FROM schema_migrations WHERE version = 6
+    `).get();
+    if (!dailyPlanProposalMigration) {
+      this.database.exec("BEGIN IMMEDIATE");
+      try {
+        this.database.exec(`
+          CREATE TABLE daily_plan_proposals (
+            proposal_id TEXT PRIMARY KEY,
+            request_id TEXT NOT NULL,
+            plan_date TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            reasoning TEXT NOT NULL,
+            main_task_id TEXT NOT NULL REFERENCES tasks(id),
+            support_task_ids_json TEXT NOT NULL,
+            confirmed_at TEXT NOT NULL
+          );
+          CREATE INDEX daily_plan_proposals_plan_date ON daily_plan_proposals(plan_date);
+          INSERT INTO schema_migrations (version, name, applied_at)
+          VALUES (6, 'add_daily_plan_proposals', datetime('now'));
+        `);
+        this.database.exec("COMMIT");
+      } catch (error) {
+        this.database.exec("ROLLBACK");
+        throw error;
+      }
+    }
   }
 
   private readPlan(date: string): TodayPlan {
@@ -570,6 +696,27 @@ function validateDecompositionSteps(steps: DecompositionStepInput[]): Decomposit
     if (!doneWhen || doneWhen.length > 300) throw new Error("拆解步骤完成标准无效");
     return { title, estimatedMinutes: step.estimatedMinutes, doneWhen };
   });
+}
+
+function validateDailyPlanProposal(proposal: ConfirmDailyPlanInput): ConfirmDailyPlanInput {
+  const proposalId = proposal.proposalId?.trim();
+  const requestId = proposal.requestId?.trim();
+  const summary = proposal.summary?.trim();
+  const reasoning = proposal.reasoning?.trim();
+  const mainTaskId = proposal.mainTaskId?.trim();
+  if (!proposalId || proposalId.length > 100) throw new Error("每日计划提案 ID 无效");
+  if (!requestId || requestId.length > 100) throw new Error("每日计划请求 ID 无效");
+  if (!summary || summary.length > 300) throw new Error("每日计划摘要无效");
+  if (!reasoning || reasoning.length > 800) throw new Error("每日计划理由无效");
+  if (!mainTaskId) throw new Error("每日计划必须有一个主线任务");
+  if (!Array.isArray(proposal.supportTaskIds) || proposal.supportTaskIds.length > 2) {
+    throw new Error("每日计划最多只能有两个辅助任务");
+  }
+  const supportTaskIds = proposal.supportTaskIds.map((id) => id?.trim());
+  if (supportTaskIds.some((id) => !id)) throw new Error("辅助任务 ID 无效");
+  const selectedIds = [mainTaskId, ...supportTaskIds];
+  if (new Set(selectedIds).size !== selectedIds.length) throw new Error("每日计划不能重复选择任务");
+  return { proposalId, requestId, summary, reasoning, mainTaskId, supportTaskIds };
 }
 
 function mapPetRow(row: PetRow): PetProfile {

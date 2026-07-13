@@ -9,6 +9,16 @@ type DecompositionProposal = {
   attempts: number;
 };
 
+type DailyPlanProposal = {
+  proposalId: string;
+  requestId: string;
+  summary: string;
+  reasoning: string;
+  mainTaskId: string;
+  supportTaskIds: string[];
+  attempts: number;
+};
+
 contextBridge.exposeInMainWorld("stepBeast", {
   platform: process.platform,
   window: {
@@ -35,6 +45,8 @@ contextBridge.exposeInMainWorld("stepBeast", {
     getToday: () => ipcRenderer.invoke("plan:get-today"),
     setRole: (taskId: string, role: "main" | "support" | null) =>
       ipcRenderer.invoke("plan:set-role", taskId, role),
+    confirmProposal: (proposal: DailyPlanProposal) =>
+      ipcRenderer.invoke("plan:confirm-proposal", proposal),
   },
   focus: {
     getCurrent: () => ipcRenderer.invoke("focus:get-current"),
@@ -51,5 +63,6 @@ contextBridge.exposeInMainWorld("stepBeast", {
     getStatus: () => ipcRenderer.invoke("hermes:get-status"),
     decomposeTask: (task: { id: string; title: string; estimatedMinutes: number | null; nextAction: string | null }) =>
       ipcRenderer.invoke("hermes:decompose-task", task),
+    generateDailyPlan: () => ipcRenderer.invoke("hermes:generate-daily-plan"),
   },
 });

@@ -21,6 +21,9 @@ export function App(): React.JSX.Element {
   const [decompositionProposal, setDecompositionProposal] = useState<StepBeastDecompositionProposal | null>(null);
   const [decomposingTaskId, setDecomposingTaskId] = useState<string | null>(null);
   const [confirmingProposal, setConfirmingProposal] = useState(false);
+  const [dailyPlanProposal, setDailyPlanProposal] = useState<StepBeastDailyPlanProposal | null>(null);
+  const [generatingDailyPlan, setGeneratingDailyPlan] = useState(false);
+  const [confirmingDailyPlan, setConfirmingDailyPlan] = useState(false);
 
   const taskRoles = Object.fromEntries(
     (todayPlan?.items ?? []).map((item) => [item.task.id, item.role]),
@@ -278,6 +281,36 @@ export function App(): React.JSX.Element {
     }
   }
 
+  async function generateDailyPlan(): Promise<void> {
+    if (!window.stepBeast) return;
+    setTaskError(null);
+    setGeneratingDailyPlan(true);
+    setPetState("thinking");
+    try {
+      setDailyPlanProposal(await window.stepBeast.hermes.generateDailyPlan());
+    } catch (error) {
+      setTaskError(errorMessage(error));
+      setPetState("idle");
+    } finally {
+      setGeneratingDailyPlan(false);
+    }
+  }
+
+  async function confirmDailyPlan(): Promise<void> {
+    if (!window.stepBeast || !dailyPlanProposal) return;
+    setTaskError(null);
+    setConfirmingDailyPlan(true);
+    try {
+      setTodayPlan(await window.stepBeast.plan.confirmProposal(dailyPlanProposal));
+      setDailyPlanProposal(null);
+      setPetState("happy");
+    } catch (error) {
+      setTaskError(errorMessage(error));
+    } finally {
+      setConfirmingDailyPlan(false);
+    }
+  }
+
   return (
     <main className={`desktop-pet ${expanded ? "desktop-pet--expanded" : ""}`}>
       {expanded && (
@@ -292,6 +325,9 @@ export function App(): React.JSX.Element {
           decompositionProposal={decompositionProposal}
           decomposingTaskId={decomposingTaskId}
           confirmingProposal={confirmingProposal}
+          dailyPlanProposal={dailyPlanProposal}
+          generatingDailyPlan={generatingDailyPlan}
+          confirmingDailyPlan={confirmingDailyPlan}
           focusActive={focusActive}
           focusPaused={focusPaused}
           remainingSeconds={remainingSeconds}
@@ -306,6 +342,12 @@ export function App(): React.JSX.Element {
           onConfirmDecomposition={() => void confirmDecomposition()}
           onCancelDecomposition={() => {
             setDecompositionProposal(null);
+            setPetState("idle");
+          }}
+          onGenerateDailyPlan={() => void generateDailyPlan()}
+          onConfirmDailyPlan={() => void confirmDailyPlan()}
+          onCancelDailyPlan={() => {
+            setDailyPlanProposal(null);
             setPetState("idle");
           }}
           onClose={() => setExpanded(false)}

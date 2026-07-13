@@ -24,6 +24,7 @@ interface Window {
     plan: {
       getToday: () => Promise<StepBeastTodayPlan>;
       setRole: (taskId: string, role: StepBeastPlanRole | null) => Promise<StepBeastTodayPlan>;
+      confirmProposal: (proposal: StepBeastDailyPlanProposal) => Promise<StepBeastTodayPlan>;
     };
     focus: {
       getCurrent: () => Promise<StepBeastFocusSession | null>;
@@ -44,6 +45,7 @@ interface Window {
         estimatedMinutes: number | null;
         nextAction: string | null;
       }) => Promise<StepBeastDecompositionProposal>;
+      generateDailyPlan: () => Promise<StepBeastDailyPlanProposal>;
     };
   };
 }
@@ -128,5 +130,15 @@ type StepBeastDecompositionProposal = {
   taskId: string;
   summary: string;
   steps: StepBeastDecompositionStep[];
+  attempts: number;
+};
+
+type StepBeastDailyPlanProposal = {
+  proposalId: string;
+  requestId: string;
+  summary: string;
+  reasoning: string;
+  mainTaskId: string;
+  supportTaskIds: string[];
   attempts: number;
 };

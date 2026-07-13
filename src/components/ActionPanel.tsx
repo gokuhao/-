@@ -12,6 +12,9 @@ type ActionPanelProps = {
   decompositionProposal: StepBeastDecompositionProposal | null;
   decomposingTaskId: string | null;
   confirmingProposal: boolean;
+  dailyPlanProposal: StepBeastDailyPlanProposal | null;
+  generatingDailyPlan: boolean;
+  confirmingDailyPlan: boolean;
   focusActive: boolean;
   focusPaused: boolean;
   remainingSeconds: number;
@@ -25,6 +28,9 @@ type ActionPanelProps = {
   onDecomposeTask: (id: string) => void;
   onConfirmDecomposition: () => void;
   onCancelDecomposition: () => void;
+  onGenerateDailyPlan: () => void;
+  onConfirmDailyPlan: () => void;
+  onCancelDailyPlan: () => void;
   onClose: () => void;
   onQuit: () => void;
 };
@@ -46,6 +52,9 @@ export function ActionPanel({
   decompositionProposal,
   decomposingTaskId,
   confirmingProposal,
+  dailyPlanProposal,
+  generatingDailyPlan,
+  confirmingDailyPlan,
   focusActive,
   focusPaused,
   remainingSeconds,
@@ -59,6 +68,9 @@ export function ActionPanel({
   onDecomposeTask,
   onConfirmDecomposition,
   onCancelDecomposition,
+  onGenerateDailyPlan,
+  onConfirmDailyPlan,
+  onCancelDailyPlan,
   onClose,
   onQuit,
 }: ActionPanelProps): React.JSX.Element {
@@ -190,6 +202,13 @@ export function ActionPanel({
       <div className="plan-status" aria-label="今日计划状态">
         <span>主线 {mainCount}/1</span>
         <span>辅助 {supportCount}/2</span>
+        <button
+          type="button"
+          disabled={hermesStatus?.state !== "ready" || generatingDailyPlan || !tasks.some(isActiveTask)}
+          onClick={onGenerateDailyPlan}
+        >
+          {generatingDailyPlan ? "AI 规划中…" : "AI 排今日计划"}
+        </button>
       </div>
 
       <div className="task-list" aria-label="任务清单">
@@ -322,6 +341,35 @@ export function ActionPanel({
           </div>
         </section>
       )}
+
+      {dailyPlanProposal && (
+        <section className="proposal-overlay daily-plan-proposal" aria-label="AI 每日计划提案">
+          <p className="panel-kicker">Hermes 今日计划提案</p>
+          <h2>{dailyPlanProposal.summary}</h2>
+          <p className="proposal-reasoning">{dailyPlanProposal.reasoning}</p>
+          {dailyPlanProposal.attempts > 1 && <small className="proposal-retry">已自动修正一次格式</small>}
+          <ol>
+            <li>
+              <div>
+                <strong>主线 · {taskTitle(tasks, dailyPlanProposal.mainTaskId)}</strong>
+              </div>
+            </li>
+            {dailyPlanProposal.supportTaskIds.map((taskId, index) => (
+              <li key={taskId}>
+                <div>
+                  <strong>辅助 {index + 1} · {taskTitle(tasks, taskId)}</strong>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div className="proposal-actions">
+            <button type="button" onClick={onCancelDailyPlan} disabled={confirmingDailyPlan}>取消</button>
+            <button type="button" onClick={onConfirmDailyPlan} disabled={confirmingDailyPlan}>
+              {confirmingDailyPlan ? "应用中…" : "确认替换今日计划"}
+            </button>
+          </div>
+        </section>
+      )}
     </section>
   );
 }
@@ -330,4 +378,12 @@ function roleRank(role: StepBeastPlanRole | undefined): number {
   if (role === "main") return 0;
   if (role === "support") return 1;
   return 2;
+}
+
+function isActiveTask(task: StepBeastTask): boolean {
+  return task.status === "todo" || task.status === "doing";
+}
+
+function taskTitle(tasks: StepBeastTask[], taskId: string): string {
+  return tasks.find((task) => task.id === taskId)?.title ?? "任务已不可用";
 }

@@ -6,5 +6,5 @@ dist-electron/
 *.db-shm
 *.db-wal
 npm-debug.log*
+dev.*.log
 .DS_Store
-

@@ -173,6 +173,11 @@ ipcMain.handle("plan:set-role", (event, taskId: string, role: "main" | "support"
   return taskRepository.setTodayRole(taskId, role);
 });
 
+ipcMain.handle("plan:confirm-proposal", (event, proposal) => {
+  if (!senderWindow(event) || !taskRepository) throw new Error("今日计划尚未准备好");
+  return taskRepository.confirmDailyPlan(proposal);
+});
+
 ipcMain.handle("pet:get-profile", (event) => {
   if (!senderWindow(event) || !taskRepository) throw new Error("宠物成长系统尚未准备好");
   return taskRepository.getPetProfile();
@@ -186,6 +191,13 @@ ipcMain.handle("hermes:get-status", (event) => {
 ipcMain.handle("hermes:decompose-task", (event, task) => {
   if (!senderWindow(event) || !hermesClient) throw new Error("Hermes Gateway 尚未准备好");
   return hermesClient.decomposeTask(task);
+});
+
+ipcMain.handle("hermes:generate-daily-plan", (event) => {
+  if (!senderWindow(event) || !hermesClient || !taskRepository) {
+    throw new Error("Hermes 每日计划尚未准备好");
+  }
+  return hermesClient.generateDailyPlan(taskRepository.getPlanningCandidates());
 });
 
 ipcMain.handle("focus:get-current", (event) => {

@@ -8,7 +8,8 @@
     "dev": "concurrently -k \"vite\" \"npm:dev:electron\"",
     "dev:electron": "wait-on tcp:5173 && tsc -p electron/tsconfig.json && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .",
     "typecheck": "tsc --noEmit && tsc -p electron/tsconfig.json --noEmit",
-    "build": "npm run typecheck && vite build && tsc -p electron/tsconfig.json"
+    "build": "npm run typecheck && vite build && tsc -p electron/tsconfig.json",
+    "test:daily-plan": "npm run build && node scripts/test-daily-plan.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
