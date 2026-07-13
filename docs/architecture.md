@@ -193,7 +193,18 @@ type AppResult<T> =
 
 ### Obsidian
 
-通过用户明确配置的 vault 路径与目录白名单访问。读写都经过 adapter；数据库层不依赖 Markdown 文件结构。
+通过 `STEPBEAST_OBSIDIAN_VAULT_PATH` 配置用户明确授权的 Vault。所有访问都经过独立 adapter；数据库层不依赖 Markdown 文件结构。
+
+Task 6.1 已实现只读索引：
+
+- 启动时验证根目录真实路径和 `.obsidian` 标记，避免把普通目录误当 Vault。
+- 授权范围可以覆盖整个 Vault，但自动排除 `.obsidian`、`.trash`、`.git`、`.agents`、`.codex`、`.sync` 和 `node_modules`。
+- 跳过符号链接；读取单篇笔记前同时校验规范化路径和 `realpath`，阻止 `../` 与链接越界。
+- 只索引 `.md`，最多 5000 篇；摘要只读取前 64 KiB，单篇完整读取上限 2 MiB。
+- 解析标题、简单 YAML frontmatter、标签、相对目录、修改时间和文件大小。
+- Electron renderer 只能通过 preload 白名单调用只读 `getStatus/listNotes/readNote`，没有写文件接口。
+
+后续写入复盘或项目状态时仍必须新增独立的 proposal/confirm 流程，Task 6.1 的“允许读取全部范围”不等于授权写入。
 
 ### 宠物动画
 
@@ -203,6 +214,7 @@ V0.1 可先用简单占位动画验证交互。正式 Codex-compatible 宠物资
 
 - 单元测试：1+2 规则、状态流转、经验计算、计时恢复。
 - Repository 测试：使用临时 SQLite 数据库验证事务和迁移。
+- Obsidian 测试：使用临时 Vault 验证 Markdown 元数据、忽略目录和路径越界保护。
 - 组件测试：任务创建、计时按钮、错误提示。
 - 冒烟测试：Windows 启动、透明窗口、拖动、重启恢复。
 - 构建测试：每个 Milestone 完成前必须执行 production build。
