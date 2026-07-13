@@ -8,6 +8,8 @@ type ActionPanelProps = {
   focusActive: boolean;
   remainingSeconds: number;
   onCreateTask: (title: string) => Promise<void>;
+  onUpdateTask: (id: string, title: string) => Promise<void>;
+  onDeleteTask: (id: string) => Promise<void>;
   onCompleteTask: (id: string) => Promise<void>;
   onToggleFocus: () => void;
   onClose: () => void;
@@ -27,6 +29,8 @@ export function ActionPanel({
   focusActive,
   remainingSeconds,
   onCreateTask,
+  onUpdateTask,
+  onDeleteTask,
   onCompleteTask,
   onToggleFocus,
   onClose,
@@ -36,6 +40,10 @@ export function ActionPanel({
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function submitTask(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -60,6 +68,37 @@ export function ActionPanel({
       // 错误由父组件统一展示。
     } finally {
       setCompletingId(null);
+    }
+  }
+
+  async function submitTaskEdit(event: FormEvent<HTMLFormElement>, id: string): Promise<void> {
+    event.preventDefault();
+    if (!editingTitle.trim() || saving) return;
+    setSaving(true);
+    try {
+      await onUpdateTask(id, editingTitle);
+      setEditingId(null);
+      setEditingTitle("");
+    } catch {
+      // 错误由父组件统一展示，并保留当前输入。
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteTask(id: string): Promise<void> {
+    if (deleteConfirmId !== id) {
+      setDeleteConfirmId(id);
+      return;
+    }
+    setDeletingId(id);
+    try {
+      await onDeleteTask(id);
+      setDeleteConfirmId(null);
+    } catch {
+      // 错误由父组件统一展示。
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -103,21 +142,49 @@ export function ActionPanel({
       <div className="task-list" aria-label="任务清单">
         {tasks.length === 0 ? (
           <p className="task-empty">任务清单还是空的。</p>
-        ) : tasks.slice(0, 3).map((task) => (
+        ) : tasks.slice(0, 3).map((task) => editingId === task.id ? (
+          <form className="task-edit-form" key={task.id} onSubmit={(event) => void submitTaskEdit(event, task.id)}>
+            <input
+              value={editingTitle}
+              maxLength={120}
+              autoFocus
+              aria-label={`修改任务：${task.title}`}
+              onChange={(event) => setEditingTitle(event.target.value)}
+            />
+            <button type="submit" disabled={!editingTitle.trim() || saving}>保存</button>
+            <button type="button" onClick={() => setEditingId(null)}>取消</button>
+          </form>
+        ) : (
           <div className={`task-item task-item--${task.status}`} key={task.id}>
-            <span>{task.title}</span>
-            {task.status === "completed" ? (
-              <small>已完成</small>
-            ) : (
+            <span title={task.title}>{task.title}</span>
+            <div className="task-item-actions">
+              {task.status !== "completed" && (
+                <button
+                  type="button"
+                  disabled={completingId === task.id}
+                  onClick={() => void completeTask(task.id)}
+                  aria-label={`完成任务：${task.title}`}
+                >
+                  {completingId === task.id ? "…" : "完成"}
+                </button>
+              )}
               <button
                 type="button"
-                disabled={completingId === task.id}
-                onClick={() => void completeTask(task.id)}
-                aria-label={`完成任务：${task.title}`}
-              >
-                {completingId === task.id ? "…" : "完成"}
-              </button>
-            )}
+                onClick={() => {
+                  setEditingId(task.id);
+                  setEditingTitle(task.title);
+                  setDeleteConfirmId(null);
+                }}
+                aria-label={`修改任务：${task.title}`}
+              >改</button>
+              <button
+                className={deleteConfirmId === task.id ? "danger-button" : ""}
+                type="button"
+                disabled={deletingId === task.id}
+                onClick={() => void deleteTask(task.id)}
+                aria-label={deleteConfirmId === task.id ? `确认删除任务：${task.title}` : `删除任务：${task.title}`}
+              >{deletingId === task.id ? "…" : deleteConfirmId === task.id ? "确认" : "删"}</button>
+            </div>
           </div>
         ))}
       </div>

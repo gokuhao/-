@@ -84,6 +84,40 @@ export function App(): React.JSX.Element {
     }
   }
 
+  async function updateTask(id: string, title: string): Promise<void> {
+    if (!window.stepBeast) throw new Error("请在步步兽桌面应用中修改任务");
+    setTaskError(null);
+    try {
+      const currentTask = tasks.find((task) => task.id === id);
+      const updated = await window.stepBeast.tasks.update(id, {
+        title,
+        estimatedMinutes: currentTask?.estimatedMinutes,
+        nextAction: currentTask?.nextAction,
+      });
+      setTasks((current) => current.map((task) => task.id === id ? updated : task));
+    } catch (error) {
+      setTaskError(errorMessage(error));
+      throw error;
+    }
+  }
+
+  async function deleteTask(id: string): Promise<void> {
+    if (!window.stepBeast) throw new Error("请在步步兽桌面应用中删除任务");
+    setTaskError(null);
+    try {
+      await window.stepBeast.tasks.delete(id);
+      setTasks((current) => current.filter((task) => task.id !== id));
+      if (activeTask?.id === id) {
+        setFocusActive(false);
+        setRemainingSeconds(FOCUS_SECONDS);
+        setPetState("idle");
+      }
+    } catch (error) {
+      setTaskError(errorMessage(error));
+      throw error;
+    }
+  }
+
   return (
     <main className={`desktop-pet ${expanded ? "desktop-pet--expanded" : ""}`}>
       {expanded && (
@@ -94,6 +128,8 @@ export function App(): React.JSX.Element {
           focusActive={focusActive}
           remainingSeconds={remainingSeconds}
           onCreateTask={createTask}
+          onUpdateTask={updateTask}
+          onDeleteTask={deleteTask}
           onCompleteTask={completeTask}
           onToggleFocus={toggleFocus}
           onClose={() => setExpanded(false)}

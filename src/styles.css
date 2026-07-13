@@ -106,9 +106,15 @@ button { font: inherit; }
 .task-empty { margin: 0; padding: 10px 12px; border-radius: 10px; color: #879385; background: #ffffff08; font-size: 12px; }
 .task-item { display: flex; min-height: 30px; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 7px 6px 11px; border-radius: 10px; background: #ffffff09; font-size: 12px; }
 .task-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-item-actions { display: flex; flex: 0 0 auto; gap: 4px; }
 .task-item button { padding: 5px 9px; font-size: 10px; }
+.task-item button:not(:first-child) { color: #aab5a7; background: #ffffff0d; }
+.task-item .danger-button { color: #ffd7d1; background: #9c3d35; }
 .task-item small { flex: 0 0 auto; color: #778276; }
 .task-item--completed span { color: #778276; text-decoration: line-through; }
+.task-edit-form { display: flex; gap: 5px; padding: 5px; border-radius: 10px; background: #ffffff09; }
+.task-edit-form input { min-width: 0; flex: 1; padding: 6px 8px; border: 1px solid #a8cb93; border-radius: 7px; outline: 0; color: #f7f4e8; background: #101611; }
+.task-edit-form button { padding: 5px 7px; border: 0; border-radius: 7px; color: #cbd5c8; background: #ffffff10; cursor: pointer; font-size: 10px; }
 .focus-row { display: flex; align-items: center; justify-content: space-between; padding-top: 15px; border-top: 1px solid #ffffff16; }
 .timer { display: block; font-size: 27px; letter-spacing: .04em; }
 .primary-button { min-width: 74px; padding: 10px 16px; border: 0; border-radius: 12px; color: #1b291d; background: #bfe49e; font-weight: 700; cursor: pointer; }
