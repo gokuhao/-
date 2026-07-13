@@ -97,16 +97,17 @@ V0.1 只提供轻量项目归类，不做完整项目管理。
 | elapsed_seconds | INTEGER | NOT NULL DEFAULT 0 | 已累计时长 |
 | status | TEXT | NOT NULL | active/paused/completed/abandoned |
 | started_at | TEXT | NOT NULL | 开始时间 |
+| active_since | TEXT | NULL | 本轮恢复计时的起点，用于重启后计算真实耗时 |
 | paused_at | TEXT | NULL | 暂停时间 |
 | ended_at | TEXT | NULL | 结束时间 |
 | result_note | TEXT | NULL | 结果说明 |
 
-数据库通过 partial unique index 保证最多一个 `active` 记录：
+数据库通过 partial unique index 保证最多一个未结束的 `active/paused` 记录：
 
 ```sql
-CREATE UNIQUE INDEX one_active_focus_session
-ON focus_sessions(status)
-WHERE status = 'active';
+CREATE UNIQUE INDEX one_open_focus_session
+ON focus_sessions((1))
+WHERE status IN ('active', 'paused');
 ```
 
 ### pet_profiles
