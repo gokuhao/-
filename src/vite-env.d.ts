@@ -16,6 +16,10 @@ interface Window {
       update: (id: string, input: CreateStepBeastTaskInput) => Promise<StepBeastTask>;
       complete: (id: string) => Promise<StepBeastTaskCompletion>;
       delete: (id: string) => Promise<void>;
+      confirmDecomposition: (
+        parentTaskId: string,
+        proposal: StepBeastDecompositionProposal,
+      ) => Promise<StepBeastTask[]>;
     };
     plan: {
       getToday: () => Promise<StepBeastTodayPlan>;
@@ -85,11 +89,13 @@ type StepBeastTodayPlan = {
 
 type StepBeastTask = {
   id: string;
+  parentTaskId: string | null;
   title: string;
   status: "todo" | "doing" | "completed" | "cancelled";
   estimatedMinutes: number | null;
   actualMinutes: number;
   nextAction: string | null;
+  evidence: string | null;
   rewardXp: number;
   createdAt: string;
   updatedAt: string;
@@ -100,4 +106,21 @@ type CreateStepBeastTaskInput = {
   title: string;
   estimatedMinutes?: number | null;
   nextAction?: string | null;
+  evidence?: string | null;
+  parentTaskId?: string | null;
+};
+
+type StepBeastDecompositionStep = {
+  title: string;
+  estimatedMinutes: number;
+  doneWhen: string;
+};
+
+type StepBeastDecompositionProposal = {
+  proposalId: string;
+  requestId: string;
+  taskId: string;
+  summary: string;
+  steps: StepBeastDecompositionStep[];
+  attempts: number;
 };

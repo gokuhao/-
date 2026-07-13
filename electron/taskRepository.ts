@@ -5,11 +5,13 @@ export type TaskStatus = "todo" | "doing" | "completed" | "cancelled";
 
 export type TaskRecord = {
   id: string;
+  parentTaskId: string | null;
   title: string;
   status: TaskStatus;
   estimatedMinutes: number | null;
   actualMinutes: number;
   nextAction: string | null;
+  evidence: string | null;
   rewardXp: number;
   createdAt: string;
   updatedAt: string;
@@ -20,6 +22,20 @@ export type CreateTaskInput = {
   title: string;
   estimatedMinutes?: number | null;
   nextAction?: string | null;
+  evidence?: string | null;
+  parentTaskId?: string | null;
+};
+
+export type DecompositionStepInput = {
+  title: string;
+  estimatedMinutes: number;
+  doneWhen: string;
+};
+
+export type ConfirmDecompositionInput = {
+  proposalId: string;
+  summary: string;
+  steps: DecompositionStepInput[];
 };
 
 export type UpdateTaskInput = CreateTaskInput;
@@ -53,11 +69,13 @@ export type TaskCompletionResult = {
 
 type TaskRow = {
   id: string;
+  parent_task_id: string | null;
   title: string;
   status: TaskStatus;
   estimated_minutes: number | null;
   actual_minutes: number;
   next_action: string | null;
+  evidence: string | null;
   reward_xp: number;
   created_at: string;
   updated_at: string;
@@ -92,7 +110,8 @@ export class TaskRepository {
 
   list(): TaskRecord[] {
     const rows = this.database.prepare(`
-      SELECT id, title, status, estimated_minutes, actual_minutes, next_action, reward_xp,
+      SELECT id, parent_task_id, title, status, estimated_minutes, actual_minutes,
+             next_action, evidence, reward_xp,
              created_at, updated_at, completed_at
       FROM tasks
       WHERE deleted_at IS NULL
@@ -103,15 +122,18 @@ export class TaskRepository {
 
   create(input: CreateTaskInput): TaskRecord {
     const { title, estimatedMinutes, nextAction } = normalizeTaskInput(input);
+    const evidence = input.evidence?.trim() || null;
+    const parentTaskId = input.parentTaskId ?? null;
+    if (parentTaskId) this.getById(parentTaskId);
     const rewardXp = rewardForMinutes(estimatedMinutes);
     const id = randomUUID();
     const now = new Date().toISOString();
     this.database.prepare(`
       INSERT INTO tasks (
-        id, title, status, estimated_minutes, next_action, reward_xp,
+        id, parent_task_id, title, status, estimated_minutes, next_action, evidence, reward_xp,
         source, created_at, updated_at
-      ) VALUES (?, ?, 'todo', ?, ?, ?, 'manual', ?, ?)
-    `).run(id, title, estimatedMinutes, nextAction, rewardXp, now, now);
+      ) VALUES (?, ?, ?, 'todo', ?, ?, ?, ?, 'manual', ?, ?)
+    `).run(id, parentTaskId, title, estimatedMinutes, nextAction, evidence, rewardXp, now, now);
     return this.getById(id);
   }
 
@@ -194,6 +216,55 @@ export class TaskRepository {
     `).run(now, now, id);
   }
 
+  confirmDecomposition(parentTaskId: string, proposal: ConfirmDecompositionInput): TaskRecord[] {
+    const parent = this.getById(parentTaskId);
+    if (parent.status !== "todo" && parent.status !== "doing") {
+      throw new Error("只能拆解未完成任务");
+    }
+    if (!proposal.proposalId || proposal.proposalId.length > 100) {
+      throw new Error("拆解提案 ID 无效");
+    }
+    const steps = validateDecompositionSteps(proposal.steps);
+    const existing = this.database.prepare(`
+      SELECT proposal_id FROM task_proposals WHERE proposal_id = ?
+    `).get(proposal.proposalId);
+    if (existing) return this.listProposalTasks(proposal.proposalId);
+
+    const now = new Date().toISOString();
+    this.database.exec("BEGIN IMMEDIATE");
+    try {
+      this.database.prepare(`
+        INSERT INTO task_proposals (proposal_id, parent_task_id, summary, created_at)
+        VALUES (?, ?, ?, ?)
+      `).run(proposal.proposalId, parentTaskId, proposal.summary.trim().slice(0, 500), now);
+
+      const insert = this.database.prepare(`
+        INSERT INTO tasks (
+          id, parent_task_id, proposal_id, title, status, estimated_minutes,
+          next_action, evidence, reward_xp, source, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, 'todo', ?, NULL, ?, ?, 'hermes', ?, ?)
+      `);
+      for (const step of steps) {
+        insert.run(
+          randomUUID(), parentTaskId, proposal.proposalId, step.title,
+          step.estimatedMinutes, step.doneWhen, rewardForMinutes(step.estimatedMinutes), now, now,
+        );
+      }
+      this.database.prepare(`
+        INSERT INTO events (id, event_type, entity_type, entity_id, payload_json, created_at)
+        VALUES (?, 'TaskDecompositionConfirmed', 'task', ?, ?, ?)
+      `).run(
+        randomUUID(), parentTaskId,
+        JSON.stringify({ proposalId: proposal.proposalId, childCount: steps.length }), now,
+      );
+      this.database.exec("COMMIT");
+    } catch (error) {
+      this.database.exec("ROLLBACK");
+      throw error;
+    }
+    return this.listProposalTasks(proposal.proposalId);
+  }
+
   getTodayPlan(): TodayPlan {
     return this.readPlan(localDateKey());
   }
@@ -258,7 +329,8 @@ export class TaskRepository {
 
   private getById(id: string): TaskRecord {
     const row = this.database.prepare(`
-      SELECT id, title, status, estimated_minutes, actual_minutes, next_action, reward_xp,
+      SELECT id, parent_task_id, title, status, estimated_minutes, actual_minutes,
+             next_action, evidence, reward_xp,
              created_at, updated_at, completed_at
       FROM tasks
       WHERE id = ? AND deleted_at IS NULL
@@ -381,12 +453,40 @@ export class TaskRepository {
         WHERE status NOT IN ('completed', 'cancelled');
       `);
     }
+
+    const decompositionMigration = this.database.prepare(`
+      SELECT version FROM schema_migrations WHERE version = 5
+    `).get();
+    if (!decompositionMigration) {
+      this.database.exec("BEGIN IMMEDIATE");
+      try {
+        this.database.exec(`
+          CREATE TABLE task_proposals (
+            proposal_id TEXT PRIMARY KEY,
+            parent_task_id TEXT NOT NULL REFERENCES tasks(id),
+            summary TEXT NOT NULL,
+            created_at TEXT NOT NULL
+          );
+          ALTER TABLE tasks ADD COLUMN parent_task_id TEXT REFERENCES tasks(id);
+          ALTER TABLE tasks ADD COLUMN proposal_id TEXT REFERENCES task_proposals(proposal_id);
+          CREATE INDEX tasks_parent_task_id ON tasks(parent_task_id);
+          CREATE INDEX tasks_proposal_id ON tasks(proposal_id);
+          INSERT INTO schema_migrations (version, name, applied_at)
+          VALUES (5, 'add_task_decomposition', datetime('now'));
+        `);
+        this.database.exec("COMMIT");
+      } catch (error) {
+        this.database.exec("ROLLBACK");
+        throw error;
+      }
+    }
   }
 
   private readPlan(date: string): TodayPlan {
     const rows = this.database.prepare(`
       SELECT i.role, i.sort_order,
-             t.id, t.title, t.status, t.estimated_minutes, t.actual_minutes, t.next_action, t.reward_xp,
+             t.id, t.parent_task_id, t.title, t.status, t.estimated_minutes,
+             t.actual_minutes, t.next_action, t.evidence, t.reward_xp,
              t.created_at, t.updated_at, t.completed_at
       FROM daily_plans p
       JOIN daily_plan_items i ON i.daily_plan_id = p.id
@@ -402,6 +502,17 @@ export class TaskRepository {
         task: mapTaskRow(row),
       })),
     };
+  }
+
+  private listProposalTasks(proposalId: string): TaskRecord[] {
+    const rows = this.database.prepare(`
+      SELECT id, parent_task_id, title, status, estimated_minutes, actual_minutes,
+             next_action, evidence, reward_xp, created_at, updated_at, completed_at
+      FROM tasks
+      WHERE proposal_id = ? AND deleted_at IS NULL
+      ORDER BY created_at, rowid
+    `).all(proposalId) as unknown as TaskRow[];
+    return rows.map(mapTaskRow);
   }
 }
 
@@ -431,16 +542,34 @@ function normalizeTaskInput(input: CreateTaskInput): {
 function mapTaskRow(row: TaskRow): TaskRecord {
   return {
     id: row.id,
+    parentTaskId: row.parent_task_id,
     title: row.title,
     status: row.status,
     estimatedMinutes: row.estimated_minutes,
     actualMinutes: row.actual_minutes,
     nextAction: row.next_action,
+    evidence: row.evidence,
     rewardXp: row.reward_xp,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     completedAt: row.completed_at,
   };
+}
+
+function validateDecompositionSteps(steps: DecompositionStepInput[]): DecompositionStepInput[] {
+  if (!Array.isArray(steps) || steps.length < 1 || steps.length > 8) {
+    throw new Error("拆解步骤需要是 1 到 8 项");
+  }
+  return steps.map((step) => {
+    const title = step.title?.trim();
+    const doneWhen = step.doneWhen?.trim();
+    if (!title || title.length > 120) throw new Error("拆解步骤标题无效");
+    if (!Number.isInteger(step.estimatedMinutes) || step.estimatedMinutes < 1 || step.estimatedMinutes > 240) {
+      throw new Error("拆解步骤时间需要是 1 到 240 分钟的整数");
+    }
+    if (!doneWhen || doneWhen.length > 300) throw new Error("拆解步骤完成标准无效");
+    return { title, estimatedMinutes: step.estimatedMinutes, doneWhen };
+  });
 }
 
 function mapPetRow(row: PetRow): PetProfile {

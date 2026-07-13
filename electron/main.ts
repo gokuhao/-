@@ -158,6 +158,11 @@ ipcMain.handle("task:delete", (event, id: string) => {
   taskRepository.remove(id);
 });
 
+ipcMain.handle("task:confirm-decomposition", (event, parentTaskId: string, proposal) => {
+  if (!senderWindow(event) || !taskRepository) throw new Error("任务系统尚未准备好");
+  return taskRepository.confirmDecomposition(parentTaskId, proposal);
+});
+
 ipcMain.handle("plan:get-today", (event) => {
   if (!senderWindow(event) || !taskRepository) throw new Error("今日计划尚未准备好");
   return taskRepository.getTodayPlan();

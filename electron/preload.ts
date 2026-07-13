@@ -1,5 +1,14 @@
 import { contextBridge, ipcRenderer } from "electron";
 
+type DecompositionProposal = {
+  proposalId: string;
+  requestId: string;
+  taskId: string;
+  summary: string;
+  steps: Array<{ title: string; estimatedMinutes: number; doneWhen: string }>;
+  attempts: number;
+};
+
 contextBridge.exposeInMainWorld("stepBeast", {
   platform: process.platform,
   window: {
@@ -19,6 +28,8 @@ contextBridge.exposeInMainWorld("stepBeast", {
       ipcRenderer.invoke("task:update", id, input),
     complete: (id: string) => ipcRenderer.invoke("task:complete", id),
     delete: (id: string) => ipcRenderer.invoke("task:delete", id),
+    confirmDecomposition: (parentTaskId: string, proposal: DecompositionProposal) =>
+      ipcRenderer.invoke("task:confirm-decomposition", parentTaskId, proposal),
   },
   plan: {
     getToday: () => ipcRenderer.invoke("plan:get-today"),
