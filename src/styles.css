@@ -135,6 +135,10 @@ button { font: inherit; }
 .hermes-status--ready .hermes-dot { background: #9bd378; box-shadow: 0 0 0 3px #9bd37824; }
 .hermes-status--online .hermes-dot { background: #e5bd6f; box-shadow: 0 0 0 3px #e5bd6f24; }
 .hermes-status--misconfigured .hermes-dot { background: #e38a77; box-shadow: 0 0 0 3px #e38a7724; }
+.service-statuses { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; }
+.service-statuses .hermes-status { min-width: 0; margin-top: 0; }
+.obsidian-status--ready .hermes-dot { background: #a88bea; box-shadow: 0 0 0 3px #a88bea24; }
+.obsidian-status--invalid .hermes-dot, .obsidian-status--unavailable .hermes-dot { background: #e38a77; box-shadow: 0 0 0 3px #e38a7724; }
 .panel-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 17px; color: #849081; font-size: 11px; }
 .growth-status { display: grid; gap: 5px; min-width: 150px; }
 .xp-track { display: block; height: 4px; overflow: hidden; border-radius: 999px; background: #ffffff12; }

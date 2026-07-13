@@ -9,6 +9,8 @@ type ActionPanelProps = {
   petProfile: StepBeastPetProfile | null;
   hermesStatus: StepBeastHermesStatus | null;
   hermesChecking: boolean;
+  obsidianStatus: StepBeastObsidianStatus | null;
+  obsidianChecking: boolean;
   decompositionProposal: StepBeastDecompositionProposal | null;
   decomposingTaskId: string | null;
   confirmingProposal: boolean;
@@ -25,6 +27,7 @@ type ActionPanelProps = {
   onSetTaskRole: (id: string, role: StepBeastPlanRole | null) => Promise<void>;
   onToggleFocus: () => void;
   onRetryHermes: () => void;
+  onRetryObsidian: () => void;
   onDecomposeTask: (id: string) => void;
   onConfirmDecomposition: () => void;
   onCancelDecomposition: () => void;
@@ -49,6 +52,8 @@ export function ActionPanel({
   petProfile,
   hermesStatus,
   hermesChecking,
+  obsidianStatus,
+  obsidianChecking,
   decompositionProposal,
   decomposingTaskId,
   confirmingProposal,
@@ -65,6 +70,7 @@ export function ActionPanel({
   onSetTaskRole,
   onToggleFocus,
   onRetryHermes,
+  onRetryObsidian,
   onDecomposeTask,
   onConfirmDecomposition,
   onCancelDecomposition,
@@ -294,18 +300,30 @@ export function ActionPanel({
         </button>
       </div>
 
-      <button
-        className={`hermes-status hermes-status--${hermesStatus?.state ?? "offline"}`}
-        type="button"
-        onClick={onRetryHermes}
-        disabled={hermesChecking}
-        title={hermesStatus?.baseUrl}
-        aria-label="重新检查 Hermes 连接"
-      >
-        <span className="hermes-dot" />
-        <span>{hermesChecking ? "正在检查 Hermes" : hermesStatus?.message ?? "Hermes 状态未知"}</span>
-        <small>重试</small>
-      </button>
+      <div className="service-statuses">
+        <button
+          className={`hermes-status hermes-status--${hermesStatus?.state ?? "offline"}`}
+          type="button"
+          onClick={onRetryHermes}
+          disabled={hermesChecking}
+          title={hermesStatus?.baseUrl}
+          aria-label="重新检查 Hermes 连接"
+        >
+          <span className="hermes-dot" />
+          <span>{hermesChecking ? "检查 Hermes" : hermesStatus?.message ?? "Hermes 状态未知"}</span>
+        </button>
+        <button
+          className={`hermes-status obsidian-status--${obsidianStatus?.state ?? "unavailable"}`}
+          type="button"
+          onClick={onRetryObsidian}
+          disabled={obsidianChecking}
+          title={obsidianStatus?.vaultPath ?? undefined}
+          aria-label="重新索引 Obsidian Vault"
+        >
+          <span className="hermes-dot" />
+          <span>{obsidianChecking ? "索引 Obsidian" : obsidianStatus?.message ?? "Obsidian 状态未知"}</span>
+        </button>
+      </div>
 
       <footer className="panel-footer">
         <div className="growth-status">

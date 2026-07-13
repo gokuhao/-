@@ -24,6 +24,8 @@ export function App(): React.JSX.Element {
   const [dailyPlanProposal, setDailyPlanProposal] = useState<StepBeastDailyPlanProposal | null>(null);
   const [generatingDailyPlan, setGeneratingDailyPlan] = useState(false);
   const [confirmingDailyPlan, setConfirmingDailyPlan] = useState(false);
+  const [obsidianStatus, setObsidianStatus] = useState<StepBeastObsidianStatus | null>(null);
+  const [obsidianChecking, setObsidianChecking] = useState(false);
 
   const taskRoles = Object.fromEntries(
     (todayPlan?.items ?? []).map((item) => [item.task.id, item.role]),
@@ -61,6 +63,10 @@ export function App(): React.JSX.Element {
     void refreshHermesStatus();
     const timer = window.setInterval(() => void refreshHermesStatus(), 30_000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    void refreshObsidianStatus();
   }, []);
 
   useEffect(() => {
@@ -236,6 +242,24 @@ export function App(): React.JSX.Element {
     }
   }
 
+  async function refreshObsidianStatus(): Promise<void> {
+    if (!window.stepBeast) return;
+    setObsidianChecking(true);
+    try {
+      setObsidianStatus(await window.stepBeast.obsidian.getStatus());
+    } catch {
+      setObsidianStatus({
+        state: "unavailable",
+        message: "Obsidian 状态检查失败",
+        vaultPath: null,
+        markdownCount: 0,
+        checkedAt: new Date().toISOString(),
+      });
+    } finally {
+      setObsidianChecking(false);
+    }
+  }
+
   async function decomposeTask(id: string): Promise<void> {
     if (!window.stepBeast) return;
     const task = tasks.find((item) => item.id === id);
@@ -322,6 +346,8 @@ export function App(): React.JSX.Element {
           petProfile={petProfile}
           hermesStatus={hermesStatus}
           hermesChecking={hermesChecking}
+          obsidianStatus={obsidianStatus}
+          obsidianChecking={obsidianChecking}
           decompositionProposal={decompositionProposal}
           decomposingTaskId={decomposingTaskId}
           confirmingProposal={confirmingProposal}
@@ -338,6 +364,7 @@ export function App(): React.JSX.Element {
           onSetTaskRole={setTaskRole}
           onToggleFocus={() => void toggleFocus()}
           onRetryHermes={() => void refreshHermesStatus()}
+          onRetryObsidian={() => void refreshObsidianStatus()}
           onDecomposeTask={(id) => void decomposeTask(id)}
           onConfirmDecomposition={() => void confirmDecomposition()}
           onCancelDecomposition={() => {
