@@ -46,6 +46,8 @@ V0.1 只提供轻量项目归类，不做完整项目管理。
 | 字段 | 类型 | 约束 | 说明 |
 |---|---|---|---|
 | id | TEXT | PK | UUID |
+| parent_task_id | TEXT | FK, NULL | AI 拆解后的父任务；顶层任务为空 |
+| proposal_id | TEXT | FK, NULL | 创建该子任务的确认提案，用于幂等 |
 | project_id | TEXT | FK, NULL | 所属项目 |
 | title | TEXT | NOT NULL | 任务标题 |
 | description | TEXT | NULL | 补充说明 |
@@ -62,6 +64,19 @@ V0.1 只提供轻量项目归类，不做完整项目管理。
 | deleted_at | TEXT | NULL | 软删除时间 |
 
 任务不直接保存 `main/support`，因为角色属于某一天，而不是任务永久属性。
+
+### task_proposals
+
+只记录用户已经确认的 AI 拆解提案，不保存未确认草稿。
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| proposal_id | TEXT | PK | StepBeast 本地生成的提案 ID |
+| parent_task_id | TEXT | FK, NOT NULL | 被拆解的父任务 |
+| summary | TEXT | NOT NULL | 提案摘要 |
+| created_at | TEXT | NOT NULL | 用户确认时间 |
+
+同一个 `proposal_id` 重复确认时返回已经创建的子任务，不重复写入。
 
 ### daily_plans
 
