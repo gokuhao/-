@@ -11,4 +11,10 @@ contextBridge.exposeInMainWorld("stepBeast", {
     setExpanded: (expanded: boolean) => ipcRenderer.send("pet-window:set-expanded", expanded),
     close: () => ipcRenderer.send("pet-window:close"),
   },
+  tasks: {
+    list: () => ipcRenderer.invoke("task:list"),
+    create: (input: { title: string; estimatedMinutes?: number | null; nextAction?: string | null }) =>
+      ipcRenderer.invoke("task:create", input),
+    complete: (id: string) => ipcRenderer.invoke("task:complete", id),
+  },
 });

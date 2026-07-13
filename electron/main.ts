@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, screen } from "electron";
 import fs from "node:fs";
 import path from "node:path";
+import { TaskRepository } from "./taskRepository.js";
 
 const COLLAPSED_SIZE = { width: 240, height: 260 };
 const EXPANDED_SIZE = { width: 380, height: 520 };
@@ -9,6 +10,7 @@ type SavedWindowState = { x: number; y: number };
 type DragSession = { offsetX: number; offsetY: number };
 
 const dragSessions = new Map<number, DragSession>();
+let taskRepository: TaskRepository | null = null;
 
 function getWindowStatePath(): string {
   return path.join(app.getPath("userData"), "window-state.json");
@@ -79,7 +81,7 @@ function createMainWindow(): void {
   }
 }
 
-function senderWindow(event: Electron.IpcMainEvent): BrowserWindow | null {
+function senderWindow(event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): BrowserWindow | null {
   return BrowserWindow.fromWebContents(event.sender);
 }
 
@@ -127,7 +129,23 @@ ipcMain.on("pet-window:close", (event) => {
   senderWindow(event)?.close();
 });
 
+ipcMain.handle("task:list", (event) => {
+  if (!senderWindow(event)) throw new Error("无效的任务读取请求");
+  return taskRepository?.list() ?? [];
+});
+
+ipcMain.handle("task:create", (event, input: { title: string; estimatedMinutes?: number | null; nextAction?: string | null }) => {
+  if (!senderWindow(event) || !taskRepository) throw new Error("任务系统尚未准备好");
+  return taskRepository.create(input);
+});
+
+ipcMain.handle("task:complete", (event, id: string) => {
+  if (!senderWindow(event) || !taskRepository) throw new Error("任务系统尚未准备好");
+  return taskRepository.complete(id);
+});
+
 app.whenReady().then(() => {
+  taskRepository = new TaskRepository(path.join(app.getPath("userData"), "pet.db"));
   createMainWindow();
 
   app.on("activate", () => {
@@ -135,6 +153,11 @@ app.whenReady().then(() => {
       createMainWindow();
     }
   });
+});
+
+app.on("before-quit", () => {
+  taskRepository?.close();
+  taskRepository = null;
 });
 
 app.on("window-all-closed", () => {
