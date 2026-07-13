@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { FocusRepository } from "./focusRepository.js";
 import { HermesClient } from "./hermesClient.js";
+import { ObsidianReader } from "./obsidianReader.js";
 import { TaskRepository } from "./taskRepository.js";
 
 const COLLAPSED_SIZE = { width: 240, height: 260 };
@@ -15,6 +16,7 @@ const dragSessions = new Map<number, DragSession>();
 let taskRepository: TaskRepository | null = null;
 let focusRepository: FocusRepository | null = null;
 let hermesClient: HermesClient | null = null;
+let obsidianReader: ObsidianReader | null = null;
 
 function getWindowStatePath(): string {
   return path.join(app.getPath("userData"), "window-state.json");
@@ -200,6 +202,21 @@ ipcMain.handle("hermes:generate-daily-plan", (event) => {
   return hermesClient.generateDailyPlan(taskRepository.getPlanningCandidates());
 });
 
+ipcMain.handle("obsidian:get-status", (event) => {
+  if (!senderWindow(event) || !obsidianReader) throw new Error("Obsidian 读取器尚未准备好");
+  return obsidianReader.getStatus();
+});
+
+ipcMain.handle("obsidian:list-notes", (event) => {
+  if (!senderWindow(event) || !obsidianReader) throw new Error("Obsidian 读取器尚未准备好");
+  return obsidianReader.listNotes();
+});
+
+ipcMain.handle("obsidian:read-note", (event, relativePath: string) => {
+  if (!senderWindow(event) || !obsidianReader) throw new Error("Obsidian 读取器尚未准备好");
+  return obsidianReader.readNote(relativePath);
+});
+
 ipcMain.handle("focus:get-current", (event) => {
   if (!senderWindow(event) || !focusRepository) throw new Error("专注系统尚未准备好");
   return focusRepository.getCurrent();
@@ -240,6 +257,7 @@ app.whenReady().then(() => {
   taskRepository = new TaskRepository(databasePath);
   focusRepository = new FocusRepository(databasePath);
   hermesClient = new HermesClient();
+  obsidianReader = new ObsidianReader();
   createMainWindow();
 
   app.on("activate", () => {
@@ -250,6 +268,7 @@ app.whenReady().then(() => {
 });
 
 app.on("before-quit", () => {
+  obsidianReader = null;
   hermesClient = null;
   focusRepository?.close();
   focusRepository = null;

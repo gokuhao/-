@@ -65,4 +65,9 @@ contextBridge.exposeInMainWorld("stepBeast", {
       ipcRenderer.invoke("hermes:decompose-task", task),
     generateDailyPlan: () => ipcRenderer.invoke("hermes:generate-daily-plan"),
   },
+  obsidian: {
+    getStatus: () => ipcRenderer.invoke("obsidian:get-status"),
+    listNotes: () => ipcRenderer.invoke("obsidian:list-notes"),
+    readNote: (relativePath: string) => ipcRenderer.invoke("obsidian:read-note", relativePath),
+  },
 });

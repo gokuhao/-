@@ -47,6 +47,11 @@ interface Window {
       }) => Promise<StepBeastDecompositionProposal>;
       generateDailyPlan: () => Promise<StepBeastDailyPlanProposal>;
     };
+    obsidian: {
+      getStatus: () => Promise<StepBeastObsidianStatus>;
+      listNotes: () => Promise<StepBeastObsidianNoteSummary[]>;
+      readNote: (relativePath: string) => Promise<StepBeastObsidianNote>;
+    };
   };
 }
 
@@ -141,4 +146,26 @@ type StepBeastDailyPlanProposal = {
   mainTaskId: string;
   supportTaskIds: string[];
   attempts: number;
+};
+
+type StepBeastObsidianStatus = {
+  state: "ready" | "not_configured" | "unavailable" | "invalid";
+  message: string;
+  vaultPath: string | null;
+  markdownCount: number;
+  checkedAt: string;
+};
+
+type StepBeastObsidianNoteSummary = {
+  relativePath: string;
+  title: string;
+  folder: string;
+  tags: string[];
+  modifiedAt: string;
+  sizeBytes: number;
+};
+
+type StepBeastObsidianNote = StepBeastObsidianNoteSummary & {
+  content: string;
+  frontmatter: Record<string, string | string[]>;
 };
