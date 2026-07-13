@@ -32,8 +32,19 @@ interface Window {
     pet: {
       getProfile: () => Promise<StepBeastPetProfile>;
     };
+    hermes: {
+      getStatus: () => Promise<StepBeastHermesStatus>;
+    };
   };
 }
+
+type StepBeastHermesStatus = {
+  state: "ready" | "online" | "offline" | "misconfigured";
+  message: string;
+  baseUrl: string;
+  apiKeyConfigured: boolean;
+  checkedAt: string;
+};
 
 type StepBeastPetProfile = {
   id: string;

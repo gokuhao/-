@@ -36,4 +36,7 @@ contextBridge.exposeInMainWorld("stepBeast", {
   pet: {
     getProfile: () => ipcRenderer.invoke("pet:get-profile"),
   },
+  hermes: {
+    getStatus: () => ipcRenderer.invoke("hermes:get-status"),
+  },
 });

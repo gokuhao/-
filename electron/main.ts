@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, screen } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { FocusRepository } from "./focusRepository.js";
+import { HermesClient } from "./hermesClient.js";
 import { TaskRepository } from "./taskRepository.js";
 
 const COLLAPSED_SIZE = { width: 240, height: 260 };
@@ -13,6 +14,7 @@ type DragSession = { offsetX: number; offsetY: number };
 const dragSessions = new Map<number, DragSession>();
 let taskRepository: TaskRepository | null = null;
 let focusRepository: FocusRepository | null = null;
+let hermesClient: HermesClient | null = null;
 
 function getWindowStatePath(): string {
   return path.join(app.getPath("userData"), "window-state.json");
@@ -171,6 +173,11 @@ ipcMain.handle("pet:get-profile", (event) => {
   return taskRepository.getPetProfile();
 });
 
+ipcMain.handle("hermes:get-status", (event) => {
+  if (!senderWindow(event) || !hermesClient) throw new Error("Hermes Gateway 尚未准备好");
+  return hermesClient.getStatus();
+});
+
 ipcMain.handle("focus:get-current", (event) => {
   if (!senderWindow(event) || !focusRepository) throw new Error("专注系统尚未准备好");
   return focusRepository.getCurrent();
@@ -202,9 +209,15 @@ ipcMain.handle("focus:abandon", (event, id: string) => {
 });
 
 app.whenReady().then(() => {
+  try {
+    process.loadEnvFile(path.join(app.getAppPath(), ".env"));
+  } catch {
+    // .env 是可选的；没有 AI 配置时本地任务、专注和成长仍然可用。
+  }
   const databasePath = path.join(app.getPath("userData"), "pet.db");
   taskRepository = new TaskRepository(databasePath);
   focusRepository = new FocusRepository(databasePath);
+  hermesClient = new HermesClient();
   createMainWindow();
 
   app.on("activate", () => {
@@ -215,6 +228,7 @@ app.whenReady().then(() => {
 });
 
 app.on("before-quit", () => {
+  hermesClient = null;
   focusRepository?.close();
   focusRepository = null;
   taskRepository?.close();
