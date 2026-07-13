@@ -7,6 +7,7 @@ type ActionPanelProps = {
   activeTask: StepBeastTask | null;
   taskError: string | null;
   focusActive: boolean;
+  focusPaused: boolean;
   remainingSeconds: number;
   onCreateTask: (title: string) => Promise<void>;
   onUpdateTask: (id: string, title: string) => Promise<void>;
@@ -30,6 +31,7 @@ export function ActionPanel({
   activeTask,
   taskError,
   focusActive,
+  focusPaused,
   remainingSeconds,
   onCreateTask,
   onUpdateTask,
@@ -182,7 +184,10 @@ export function ActionPanel({
           </form>
         ) : (
           <div className={`task-item task-item--${task.status}`} key={task.id}>
-            <span title={task.title}>{task.title}</span>
+            <div className="task-item-copy">
+              <span title={task.title}>{task.title}</span>
+              {task.actualMinutes > 0 && <small>已专注 {task.actualMinutes} 分钟</small>}
+            </div>
             <div className="task-item-actions">
               <select
                 value={taskRoles[task.id] ?? ""}
@@ -227,11 +232,11 @@ export function ActionPanel({
 
       <div className="focus-row">
         <div>
-          <span className="focus-label">{focusActive ? "专注进行中" : "25 分钟专注"}</span>
+          <span className="focus-label">{focusActive ? "专注进行中" : focusPaused ? "专注已暂停" : "25 分钟专注"}</span>
           <strong className="timer">{formatTime(remainingSeconds)}</strong>
         </div>
         <button className="primary-button" type="button" onClick={onToggleFocus} disabled={!activeTask}>
-          {focusActive ? "暂停" : remainingSeconds < 1500 ? "继续" : "开始"}
+          {focusActive ? "暂停" : focusPaused ? "继续" : "开始"}
         </button>
       </div>
 

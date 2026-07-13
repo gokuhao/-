@@ -9,7 +9,7 @@ const FOCUS_SECONDS = 25 * 60;
 export function App(): React.JSX.Element {
   const [expanded, setExpanded] = useState(false);
   const [petState, setPetState] = useState<PetState>("idle");
-  const [focusActive, setFocusActive] = useState(false);
+  const [focusSession, setFocusSession] = useState<StepBeastFocusSession | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(FOCUS_SECONDS);
   const [tasks, setTasks] = useState<StepBeastTask[]>([]);
   const [taskError, setTaskError] = useState<string | null>(null);
@@ -19,16 +19,28 @@ export function App(): React.JSX.Element {
     (todayPlan?.items ?? []).map((item) => [item.task.id, item.role]),
   ) as Partial<Record<string, StepBeastPlanRole>>;
   const mainTaskId = todayPlan?.items.find((item) => item.role === "main")?.task.id;
-  const activeTask = tasks.find((task) => task.id === mainTaskId && (task.status === "todo" || task.status === "doing"))
+  const activeTask = tasks.find((task) => task.id === focusSession?.taskId && (task.status === "todo" || task.status === "doing"))
+    ?? tasks.find((task) => task.id === mainTaskId && (task.status === "todo" || task.status === "doing"))
     ?? tasks.find((task) => task.status === "todo" || task.status === "doing")
     ?? null;
+  const focusActive = focusSession?.status === "active";
+  const focusPaused = focusSession?.status === "paused";
 
   useEffect(() => {
     if (!window.stepBeast) return;
-    Promise.all([window.stepBeast.tasks.list(), window.stepBeast.plan.getToday()])
-      .then(([storedTasks, storedPlan]) => {
+    Promise.all([
+      window.stepBeast.tasks.list(),
+      window.stepBeast.plan.getToday(),
+      window.stepBeast.focus.getCurrent(),
+    ])
+      .then(([storedTasks, storedPlan, storedFocus]) => {
         setTasks(storedTasks);
         setTodayPlan(storedPlan);
+        setFocusSession(storedFocus);
+        if (storedFocus) {
+          setRemainingSeconds(Math.max(0, storedFocus.plannedSeconds - storedFocus.elapsedSeconds));
+          setPetState(storedFocus.status === "active" ? "focused" : "resting");
+        }
       })
       .catch((error: unknown) => setTaskError(errorMessage(error)));
   }, []);
@@ -38,28 +50,55 @@ export function App(): React.JSX.Element {
   }, [expanded]);
 
   useEffect(() => {
-    if (!focusActive) return;
+    if (!focusSession || focusSession.status !== "active") return;
     const timer = window.setInterval(() => {
       setRemainingSeconds((current) => {
         if (current <= 1) {
-          setFocusActive(false);
-          setPetState("happy");
+          window.clearInterval(timer);
+          void finishExpiredFocus(focusSession.id);
           return 0;
         }
         return current - 1;
       });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [focusActive]);
+  }, [focusSession]);
 
-  function toggleFocus(): void {
-    if (!activeTask) return;
-    if (remainingSeconds === 0) setRemainingSeconds(FOCUS_SECONDS);
-    setFocusActive((active) => {
-      const next = !active;
-      setPetState(next ? "focused" : "idle");
-      return next;
-    });
+  async function toggleFocus(): Promise<void> {
+    if (!window.stepBeast || (!activeTask && !focusSession)) return;
+    setTaskError(null);
+    try {
+      if (!focusSession && activeTask) {
+        const plannedSeconds = Math.min(activeTask.estimatedMinutes ?? 25, 240) * 60;
+        const started = await window.stepBeast.focus.start(activeTask.id, plannedSeconds);
+        setFocusSession(started);
+        setRemainingSeconds(started.plannedSeconds - started.elapsedSeconds);
+        setPetState("focused");
+      } else if (focusSession?.status === "active") {
+        const paused = await window.stepBeast.focus.pause(focusSession.id);
+        setFocusSession(paused);
+        setRemainingSeconds(Math.max(0, paused.plannedSeconds - paused.elapsedSeconds));
+        setPetState("resting");
+      } else if (focusSession?.status === "paused") {
+        const resumed = await window.stepBeast.focus.resume(focusSession.id);
+        setFocusSession(resumed);
+        setRemainingSeconds(Math.max(0, resumed.plannedSeconds - resumed.elapsedSeconds));
+        setPetState("focused");
+      }
+    } catch (error) {
+      setTaskError(errorMessage(error));
+    }
+  }
+
+  async function finishExpiredFocus(id: string): Promise<void> {
+    if (!window.stepBeast) return;
+    try {
+      await window.stepBeast.focus.finish(id);
+      setFocusSession(null);
+      setPetState("happy");
+    } catch (error) {
+      setTaskError(errorMessage(error));
+    }
   }
 
   async function createTask(title: string): Promise<void> {
@@ -79,6 +118,11 @@ export function App(): React.JSX.Element {
     if (!window.stepBeast) throw new Error("请在步步兽桌面应用中完成任务");
     setTaskError(null);
     try {
+      if (focusSession?.taskId === id) {
+        await window.stepBeast.focus.finish(focusSession.id);
+        setFocusSession(null);
+        setRemainingSeconds(FOCUS_SECONDS);
+      }
       const completed = await window.stepBeast.tasks.complete(id);
       setTasks((current) => current
         .map((task) => task.id === id ? completed : task)
@@ -88,10 +132,6 @@ export function App(): React.JSX.Element {
         items: current.items.map((item) => item.task.id === id ? { ...item, task: completed } : item),
       } : current);
       setPetState("happy");
-      if (activeTask?.id === id) {
-        setFocusActive(false);
-        setRemainingSeconds(FOCUS_SECONDS);
-      }
     } catch (error) {
       setTaskError(errorMessage(error));
       throw error;
@@ -119,6 +159,11 @@ export function App(): React.JSX.Element {
     if (!window.stepBeast) throw new Error("请在步步兽桌面应用中删除任务");
     setTaskError(null);
     try {
+      if (focusSession?.taskId === id) {
+        await window.stepBeast.focus.abandon(focusSession.id);
+        setFocusSession(null);
+        setRemainingSeconds(FOCUS_SECONDS);
+      }
       await window.stepBeast.tasks.delete(id);
       setTasks((current) => current.filter((task) => task.id !== id));
       setTodayPlan((current) => current ? {
@@ -126,8 +171,6 @@ export function App(): React.JSX.Element {
         items: current.items.filter((item) => item.task.id !== id),
       } : current);
       if (activeTask?.id === id) {
-        setFocusActive(false);
-        setRemainingSeconds(FOCUS_SECONDS);
         setPetState("idle");
       }
     } catch (error) {
@@ -157,13 +200,14 @@ export function App(): React.JSX.Element {
           activeTask={activeTask}
           taskError={taskError}
           focusActive={focusActive}
+          focusPaused={focusPaused}
           remainingSeconds={remainingSeconds}
           onCreateTask={createTask}
           onUpdateTask={updateTask}
           onDeleteTask={deleteTask}
           onCompleteTask={completeTask}
           onSetTaskRole={setTaskRole}
-          onToggleFocus={toggleFocus}
+          onToggleFocus={() => void toggleFocus()}
           onClose={() => setExpanded(false)}
           onQuit={() => window.stepBeast?.window.close()}
         />

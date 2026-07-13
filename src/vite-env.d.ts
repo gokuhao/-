@@ -59,6 +59,7 @@ type StepBeastTask = {
   title: string;
   status: "todo" | "doing" | "completed" | "cancelled";
   estimatedMinutes: number | null;
+  actualMinutes: number;
   nextAction: string | null;
   rewardXp: number;
   createdAt: string;

@@ -8,6 +8,7 @@ export type TaskRecord = {
   title: string;
   status: TaskStatus;
   estimatedMinutes: number | null;
+  actualMinutes: number;
   nextAction: string | null;
   rewardXp: number;
   createdAt: string;
@@ -40,6 +41,7 @@ type TaskRow = {
   title: string;
   status: TaskStatus;
   estimated_minutes: number | null;
+  actual_minutes: number;
   next_action: string | null;
   reward_xp: number;
   created_at: string;
@@ -64,7 +66,7 @@ export class TaskRepository {
 
   list(): TaskRecord[] {
     const rows = this.database.prepare(`
-      SELECT id, title, status, estimated_minutes, next_action, reward_xp,
+      SELECT id, title, status, estimated_minutes, actual_minutes, next_action, reward_xp,
              created_at, updated_at, completed_at
       FROM tasks
       WHERE deleted_at IS NULL
@@ -188,7 +190,7 @@ export class TaskRepository {
 
   private getById(id: string): TaskRecord {
     const row = this.database.prepare(`
-      SELECT id, title, status, estimated_minutes, next_action, reward_xp,
+      SELECT id, title, status, estimated_minutes, actual_minutes, next_action, reward_xp,
              created_at, updated_at, completed_at
       FROM tasks
       WHERE id = ? AND deleted_at IS NULL
@@ -257,7 +259,7 @@ export class TaskRepository {
   private readPlan(date: string): TodayPlan {
     const rows = this.database.prepare(`
       SELECT i.role, i.sort_order,
-             t.id, t.title, t.status, t.estimated_minutes, t.next_action, t.reward_xp,
+             t.id, t.title, t.status, t.estimated_minutes, t.actual_minutes, t.next_action, t.reward_xp,
              t.created_at, t.updated_at, t.completed_at
       FROM daily_plans p
       JOIN daily_plan_items i ON i.daily_plan_id = p.id
@@ -305,6 +307,7 @@ function mapTaskRow(row: TaskRow): TaskRecord {
     title: row.title,
     status: row.status,
     estimatedMinutes: row.estimated_minutes,
+    actualMinutes: row.actual_minutes,
     nextAction: row.next_action,
     rewardXp: row.reward_xp,
     createdAt: row.created_at,

@@ -107,7 +107,9 @@ button { font: inherit; }
 .task-list { display: grid; gap: 6px; max-height: 106px; margin: 0 0 14px; overflow-y: auto; }
 .task-empty { margin: 0; padding: 10px 12px; border-radius: 10px; color: #879385; background: #ffffff08; font-size: 12px; }
 .task-item { display: flex; min-height: 30px; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 7px 6px 11px; border-radius: 10px; background: #ffffff09; font-size: 12px; }
-.task-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-item-copy { display: grid; min-width: 0; }
+.task-item-copy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-item-copy small { color: #778276; font-size: 9px; }
 .task-item-actions { display: flex; flex: 0 0 auto; gap: 4px; }
 .task-item-actions select { width: 53px; border: 1px solid #ffffff16; border-radius: 7px; outline: 0; color: #bec9bb; background: #202a21; font-size: 10px; }
 .task-item button { padding: 5px 9px; font-size: 10px; }
