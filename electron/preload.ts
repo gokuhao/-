@@ -19,6 +19,29 @@ type DailyPlanProposal = {
   attempts: number;
 };
 
+type ObsidianProjectProposal = {
+  proposalId: string;
+  projectIndexPath: string;
+  summary: string;
+  projects: Array<{
+    sourcePath: string;
+    name: string;
+    status: "active" | "testing" | "paused" | "completed" | "archived";
+    category: "current" | "support" | "paused";
+    goal: string | null;
+    currentStage: string | null;
+    sourceModifiedAt: string;
+  }>;
+  taskCandidates: Array<{
+    candidateKey: string;
+    projectSourcePath: string;
+    projectName: string;
+    title: string;
+    estimatedMinutes: number;
+    sourcePath: string;
+  }>;
+};
+
 contextBridge.exposeInMainWorld("stepBeast", {
   platform: process.platform,
   window: {
@@ -69,5 +92,11 @@ contextBridge.exposeInMainWorld("stepBeast", {
     getStatus: () => ipcRenderer.invoke("obsidian:get-status"),
     listNotes: () => ipcRenderer.invoke("obsidian:list-notes"),
     readNote: (relativePath: string) => ipcRenderer.invoke("obsidian:read-note", relativePath),
+    proposeProjectSync: () => ipcRenderer.invoke("obsidian:propose-project-sync"),
+  },
+  projects: {
+    list: () => ipcRenderer.invoke("project:list"),
+    confirmSync: (proposal: ObsidianProjectProposal, selectedCandidateKeys: string[]) =>
+      ipcRenderer.invoke("project:confirm-sync", proposal, selectedCandidateKeys),
   },
 });

@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit && tsc -p electron/tsconfig.json --noEmit",
     "build": "npm run typecheck && vite build && tsc -p electron/tsconfig.json",
     "test:daily-plan": "npm run build && node scripts/test-daily-plan.mjs",
-    "test:obsidian": "npm run build && node scripts/test-obsidian-reader.mjs"
+    "test:obsidian": "npm run build && node scripts/test-obsidian-reader.mjs",
+    "test:obsidian-projects": "npm run build && node scripts/test-obsidian-projects.mjs",
+    "test:project-sync": "npm run build && node scripts/test-project-sync.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

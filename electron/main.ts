@@ -4,6 +4,8 @@ import path from "node:path";
 import { FocusRepository } from "./focusRepository.js";
 import { HermesClient } from "./hermesClient.js";
 import { ObsidianReader } from "./obsidianReader.js";
+import { ObsidianProjectService } from "./obsidianProjectService.js";
+import { ProjectRepository } from "./projectRepository.js";
 import { TaskRepository } from "./taskRepository.js";
 
 const COLLAPSED_SIZE = { width: 240, height: 260 };
@@ -17,6 +19,8 @@ let taskRepository: TaskRepository | null = null;
 let focusRepository: FocusRepository | null = null;
 let hermesClient: HermesClient | null = null;
 let obsidianReader: ObsidianReader | null = null;
+let obsidianProjectService: ObsidianProjectService | null = null;
+let projectRepository: ProjectRepository | null = null;
 
 function getWindowStatePath(): string {
   return path.join(app.getPath("userData"), "window-state.json");
@@ -217,6 +221,21 @@ ipcMain.handle("obsidian:read-note", (event, relativePath: string) => {
   return obsidianReader.readNote(relativePath);
 });
 
+ipcMain.handle("obsidian:propose-project-sync", (event) => {
+  if (!senderWindow(event) || !obsidianProjectService) throw new Error("Obsidian 项目读取器尚未准备好");
+  return obsidianProjectService.generateProposal();
+});
+
+ipcMain.handle("project:list", (event) => {
+  if (!senderWindow(event) || !projectRepository) throw new Error("项目系统尚未准备好");
+  return projectRepository.list();
+});
+
+ipcMain.handle("project:confirm-sync", (event, proposal, selectedCandidateKeys: string[]) => {
+  if (!senderWindow(event) || !projectRepository) throw new Error("项目系统尚未准备好");
+  return projectRepository.confirmSync({ proposal, selectedCandidateKeys });
+});
+
 ipcMain.handle("focus:get-current", (event) => {
   if (!senderWindow(event) || !focusRepository) throw new Error("专注系统尚未准备好");
   return focusRepository.getCurrent();
@@ -258,6 +277,8 @@ app.whenReady().then(() => {
   focusRepository = new FocusRepository(databasePath);
   hermesClient = new HermesClient();
   obsidianReader = new ObsidianReader();
+  obsidianProjectService = new ObsidianProjectService(obsidianReader);
+  projectRepository = new ProjectRepository(databasePath);
   createMainWindow();
 
   app.on("activate", () => {
@@ -268,6 +289,9 @@ app.whenReady().then(() => {
 });
 
 app.on("before-quit", () => {
+  projectRepository?.close();
+  projectRepository = null;
+  obsidianProjectService = null;
   obsidianReader = null;
   hermesClient = null;
   focusRepository?.close();

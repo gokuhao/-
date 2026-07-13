@@ -51,6 +51,14 @@ interface Window {
       getStatus: () => Promise<StepBeastObsidianStatus>;
       listNotes: () => Promise<StepBeastObsidianNoteSummary[]>;
       readNote: (relativePath: string) => Promise<StepBeastObsidianNote>;
+      proposeProjectSync: () => Promise<StepBeastObsidianProjectProposal>;
+    };
+    projects: {
+      list: () => Promise<StepBeastProject[]>;
+      confirmSync: (
+        proposal: StepBeastObsidianProjectProposal,
+        selectedCandidateKeys: string[],
+      ) => Promise<StepBeastProjectSyncResult>;
     };
   };
 }
@@ -168,4 +176,51 @@ type StepBeastObsidianNoteSummary = {
 type StepBeastObsidianNote = StepBeastObsidianNoteSummary & {
   content: string;
   frontmatter: Record<string, string | string[]>;
+};
+
+type StepBeastProjectStatus = "active" | "testing" | "paused" | "completed" | "archived";
+type StepBeastProjectCategory = "current" | "support" | "paused";
+
+type StepBeastObsidianProjectCandidate = {
+  sourcePath: string;
+  name: string;
+  status: StepBeastProjectStatus;
+  category: StepBeastProjectCategory;
+  goal: string | null;
+  currentStage: string | null;
+  sourceModifiedAt: string;
+};
+
+type StepBeastObsidianTaskCandidate = {
+  candidateKey: string;
+  projectSourcePath: string;
+  projectName: string;
+  title: string;
+  estimatedMinutes: number;
+  sourcePath: string;
+};
+
+type StepBeastObsidianProjectProposal = {
+  proposalId: string;
+  projectIndexPath: string;
+  summary: string;
+  projects: StepBeastObsidianProjectCandidate[];
+  taskCandidates: StepBeastObsidianTaskCandidate[];
+};
+
+type StepBeastProject = {
+  id: string;
+  name: string;
+  status: StepBeastProjectStatus;
+  category: StepBeastProjectCategory;
+  goal: string | null;
+  currentStage: string | null;
+  sourceNotePath: string;
+  sourceModifiedAt: string;
+  updatedAt: string;
+};
+
+type StepBeastProjectSyncResult = {
+  projects: StepBeastProject[];
+  createdTaskIds: string[];
 };
