@@ -140,6 +140,7 @@ V0.1 只有一个宠物档案，但保留主键方便未来切换形象。
 | created_at | TEXT | NOT NULL | 发生时间 |
 
 V0.1 正常事件不产生负经验。`manual_adjustment` 仅用于数据修复并写入审计事件。
+`task_completed` 对 `(task_id, event_type)` 建立唯一索引，防止同一任务重复领取经验。
 
 ### settings
 
