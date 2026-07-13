@@ -33,4 +33,7 @@ contextBridge.exposeInMainWorld("stepBeast", {
     finish: (id: string) => ipcRenderer.invoke("focus:finish", id),
     abandon: (id: string) => ipcRenderer.invoke("focus:abandon", id),
   },
+  pet: {
+    getProfile: () => ipcRenderer.invoke("pet:get-profile"),
+  },
 });

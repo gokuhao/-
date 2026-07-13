@@ -166,6 +166,11 @@ ipcMain.handle("plan:set-role", (event, taskId: string, role: "main" | "support"
   return taskRepository.setTodayRole(taskId, role);
 });
 
+ipcMain.handle("pet:get-profile", (event) => {
+  if (!senderWindow(event) || !taskRepository) throw new Error("宠物成长系统尚未准备好");
+  return taskRepository.getPetProfile();
+});
+
 ipcMain.handle("focus:get-current", (event) => {
   if (!senderWindow(event) || !focusRepository) throw new Error("专注系统尚未准备好");
   return focusRepository.getCurrent();

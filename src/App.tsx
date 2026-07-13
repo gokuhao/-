@@ -14,6 +14,8 @@ export function App(): React.JSX.Element {
   const [tasks, setTasks] = useState<StepBeastTask[]>([]);
   const [taskError, setTaskError] = useState<string | null>(null);
   const [todayPlan, setTodayPlan] = useState<StepBeastTodayPlan | null>(null);
+  const [petProfile, setPetProfile] = useState<StepBeastPetProfile | null>(null);
+  const [rewardNotice, setRewardNotice] = useState<string | null>(null);
 
   const taskRoles = Object.fromEntries(
     (todayPlan?.items ?? []).map((item) => [item.task.id, item.role]),
@@ -32,11 +34,13 @@ export function App(): React.JSX.Element {
       window.stepBeast.tasks.list(),
       window.stepBeast.plan.getToday(),
       window.stepBeast.focus.getCurrent(),
+      window.stepBeast.pet.getProfile(),
     ])
-      .then(([storedTasks, storedPlan, storedFocus]) => {
+      .then(([storedTasks, storedPlan, storedFocus, storedProfile]) => {
         setTasks(storedTasks);
         setTodayPlan(storedPlan);
         setFocusSession(storedFocus);
+        setPetProfile(storedProfile);
         if (storedFocus) {
           setRemainingSeconds(Math.max(0, storedFocus.plannedSeconds - storedFocus.elapsedSeconds));
           setPetState(storedFocus.status === "active" ? "focused" : "resting");
@@ -63,6 +67,12 @@ export function App(): React.JSX.Element {
     }, 1000);
     return () => window.clearInterval(timer);
   }, [focusSession]);
+
+  useEffect(() => {
+    if (!rewardNotice) return;
+    const timer = window.setTimeout(() => setRewardNotice(null), 1800);
+    return () => window.clearTimeout(timer);
+  }, [rewardNotice]);
 
   async function toggleFocus(): Promise<void> {
     if (!window.stepBeast || (!activeTask && !focusSession)) return;
@@ -123,7 +133,8 @@ export function App(): React.JSX.Element {
         setFocusSession(null);
         setRemainingSeconds(FOCUS_SECONDS);
       }
-      const completed = await window.stepBeast.tasks.complete(id);
+      const completion = await window.stepBeast.tasks.complete(id);
+      const completed = completion.task;
       setTasks((current) => current
         .map((task) => task.id === id ? completed : task)
         .sort((left, right) => Number(left.status === "completed") - Number(right.status === "completed")));
@@ -131,6 +142,8 @@ export function App(): React.JSX.Element {
         ...current,
         items: current.items.map((item) => item.task.id === id ? { ...item, task: completed } : item),
       } : current);
+      setPetProfile(completion.profile);
+      if (completion.xpGained > 0) setRewardNotice(`+${completion.xpGained} XP`);
       setPetState("happy");
     } catch (error) {
       setTaskError(errorMessage(error));
@@ -199,6 +212,7 @@ export function App(): React.JSX.Element {
           taskRoles={taskRoles}
           activeTask={activeTask}
           taskError={taskError}
+          petProfile={petProfile}
           focusActive={focusActive}
           focusPaused={focusPaused}
           remainingSeconds={remainingSeconds}
@@ -214,8 +228,8 @@ export function App(): React.JSX.Element {
       )}
 
       <div className="pet-stage">
-        <div className="pet-speech" aria-live="polite">
-          {expanded ? PET_STATE_LABELS[petState] : "点我，开始今天"}
+        <div className={`pet-speech ${rewardNotice ? "pet-speech--reward" : ""}`} aria-live="polite">
+          {rewardNotice ?? (expanded ? PET_STATE_LABELS[petState] : "点我，开始今天")}
         </div>
         <PetAvatar
           state={petState}

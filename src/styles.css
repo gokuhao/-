@@ -48,6 +48,7 @@ button { font: inherit; }
   line-height: 1.3;
   pointer-events: none;
 }
+.pet-speech--reward { color: #21351f; background: #c8efa7; font-size: 14px; font-weight: 800; }
 
 .pet-avatar {
   position: relative;
@@ -124,7 +125,10 @@ button { font: inherit; }
 .timer { display: block; font-size: 27px; letter-spacing: .04em; }
 .primary-button { min-width: 74px; padding: 10px 16px; border: 0; border-radius: 12px; color: #1b291d; background: #bfe49e; font-weight: 700; cursor: pointer; }
 .primary-button:hover { background: #cef0b0; }
-.panel-footer { display: flex; justify-content: space-between; margin-top: 17px; color: #849081; font-size: 11px; }
+.panel-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 17px; color: #849081; font-size: 11px; }
+.growth-status { display: grid; gap: 5px; min-width: 150px; }
+.xp-track { display: block; height: 4px; overflow: hidden; border-radius: 999px; background: #ffffff12; }
+.xp-track > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8fc66f, #d3ef9d); transition: width .35s ease; }
 .panel-footer button { padding: 0; border: 0; color: #849081; background: transparent; cursor: pointer; }
 .panel-footer button:hover { color: #d7ddd4; }
 

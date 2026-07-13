@@ -6,6 +6,7 @@ type ActionPanelProps = {
   taskRoles: Partial<Record<string, StepBeastPlanRole>>;
   activeTask: StepBeastTask | null;
   taskError: string | null;
+  petProfile: StepBeastPetProfile | null;
   focusActive: boolean;
   focusPaused: boolean;
   remainingSeconds: number;
@@ -30,6 +31,7 @@ export function ActionPanel({
   taskRoles,
   activeTask,
   taskError,
+  petProfile,
   focusActive,
   focusPaused,
   remainingSeconds,
@@ -53,6 +55,11 @@ export function ActionPanel({
   const [changingRoleId, setChangingRoleId] = useState<string | null>(null);
   const mainCount = Object.values(taskRoles).filter((role) => role === "main").length;
   const supportCount = Object.values(taskRoles).filter((role) => role === "support").length;
+  const level = petProfile?.level ?? 1;
+  const totalXp = petProfile?.totalXp ?? 0;
+  const currentLevelXp = (100 * (level - 1) * level) / 2;
+  const nextLevelXp = (100 * level * (level + 1)) / 2;
+  const levelProgress = Math.min(100, ((totalXp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100);
   const displayedTasks = [...tasks]
     .sort((left, right) => roleRank(taskRoles[left.id]) - roleRank(taskRoles[right.id]))
     .slice(0, 3);
@@ -241,7 +248,12 @@ export function ActionPanel({
       </div>
 
       <footer className="panel-footer">
-        <span>Lv.1 · 0 / 100 XP</span>
+        <div className="growth-status">
+          <span>Lv.{level} · {totalXp} / {nextLevelXp} XP</span>
+          <span className="xp-track" aria-label={`等级进度 ${Math.round(levelProgress)}%`}>
+            <span style={{ width: `${levelProgress}%` }} />
+          </span>
+        </div>
         <button type="button" onClick={onQuit}>退出步步兽</button>
       </footer>
     </section>

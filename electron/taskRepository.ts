@@ -36,6 +36,21 @@ export type TodayPlan = {
   items: TodayPlanItem[];
 };
 
+export type PetProfile = {
+  id: string;
+  name: string;
+  level: number;
+  totalXp: number;
+  emotion: string;
+  activeMode: number;
+};
+
+export type TaskCompletionResult = {
+  task: TaskRecord;
+  profile: PetProfile;
+  xpGained: number;
+};
+
 type TaskRow = {
   id: string;
   title: string;
@@ -53,6 +68,17 @@ type PlanItemRow = TaskRow & {
   role: PlanRole;
   sort_order: number;
 };
+
+type PetRow = {
+  id: string;
+  name: string;
+  level: number;
+  total_xp: number;
+  emotion: string;
+  active_mode: number;
+};
+
+const DEFAULT_PET_ID = "stepbeast-default";
 
 export class TaskRepository {
   private readonly database: DatabaseSync;
@@ -77,14 +103,15 @@ export class TaskRepository {
 
   create(input: CreateTaskInput): TaskRecord {
     const { title, estimatedMinutes, nextAction } = normalizeTaskInput(input);
+    const rewardXp = rewardForMinutes(estimatedMinutes);
     const id = randomUUID();
     const now = new Date().toISOString();
     this.database.prepare(`
       INSERT INTO tasks (
         id, title, status, estimated_minutes, next_action, reward_xp,
         source, created_at, updated_at
-      ) VALUES (?, ?, 'todo', ?, ?, 10, 'manual', ?, ?)
-    `).run(id, title, estimatedMinutes, nextAction, now, now);
+      ) VALUES (?, ?, 'todo', ?, ?, ?, 'manual', ?, ?)
+    `).run(id, title, estimatedMinutes, nextAction, rewardXp, now, now);
     return this.getById(id);
   }
 
@@ -92,27 +119,68 @@ export class TaskRepository {
     if (!id) throw new Error("缺少任务 ID");
     this.getById(id);
     const { title, estimatedMinutes, nextAction } = normalizeTaskInput(input);
+    const rewardXp = rewardForMinutes(estimatedMinutes);
     const now = new Date().toISOString();
     this.database.prepare(`
       UPDATE tasks
-      SET title = ?, estimated_minutes = ?, next_action = ?, updated_at = ?
+      SET title = ?, estimated_minutes = ?, next_action = ?, reward_xp = ?, updated_at = ?
       WHERE id = ? AND deleted_at IS NULL
-    `).run(title, estimatedMinutes, nextAction, now, id);
+    `).run(title, estimatedMinutes, nextAction, rewardXp, now, id);
     return this.getById(id);
   }
 
-  complete(id: string): TaskRecord {
+  complete(id: string): TaskCompletionResult {
     if (!id) throw new Error("缺少任务 ID");
     const task = this.getById(id);
-    if (task.status === "completed") return task;
+    if (task.status === "completed") {
+      return { task, profile: this.getPetProfile(), xpGained: 0 };
+    }
 
     const now = new Date().toISOString();
-    this.database.prepare(`
-      UPDATE tasks
-      SET status = 'completed', completed_at = ?, updated_at = ?
-      WHERE id = ? AND deleted_at IS NULL
-    `).run(now, now, id);
-    return this.getById(id);
+    const xpGained = rewardForMinutes(task.estimatedMinutes);
+    const currentProfile = this.getPetProfile();
+    const nextTotalXp = currentProfile.totalXp + xpGained;
+    const nextLevel = levelForXp(nextTotalXp);
+    this.database.exec("BEGIN IMMEDIATE");
+    try {
+      this.database.prepare(`
+        UPDATE tasks
+        SET status = 'completed', reward_xp = ?, completed_at = ?, updated_at = ?
+        WHERE id = ? AND deleted_at IS NULL
+      `).run(xpGained, now, now, id);
+      this.database.prepare(`
+        INSERT INTO growth_events (
+          id, pet_id, task_id, event_type, xp_delta, reason, created_at
+        ) VALUES (?, ?, ?, 'task_completed', ?, ?, ?)
+      `).run(randomUUID(), DEFAULT_PET_ID, id, xpGained, `完成任务：${task.title}`, now);
+      this.database.prepare(`
+        UPDATE pet_profiles
+        SET level = ?, total_xp = ?, emotion = 'happy', updated_at = ?
+        WHERE id = ?
+      `).run(nextLevel, nextTotalXp, now, DEFAULT_PET_ID);
+      this.database.prepare(`
+        INSERT INTO events (id, event_type, entity_type, entity_id, payload_json, created_at)
+        VALUES (?, 'TaskCompleted', 'task', ?, ?, ?)
+      `).run(randomUUID(), id, JSON.stringify({ taskId: id, xpGained, totalXp: nextTotalXp }), now);
+      this.database.exec("COMMIT");
+    } catch (error) {
+      this.database.exec("ROLLBACK");
+      throw error;
+    }
+    return {
+      task: this.getById(id),
+      profile: this.getPetProfile(),
+      xpGained,
+    };
+  }
+
+  getPetProfile(): PetProfile {
+    const row = this.database.prepare(`
+      SELECT id, name, level, total_xp, emotion, active_mode
+      FROM pet_profiles WHERE id = ?
+    `).get(DEFAULT_PET_ID) as unknown as PetRow | undefined;
+    if (!row) throw new Error("没有找到宠物档案");
+    return mapPetRow(row);
   }
 
   remove(id: string): void {
@@ -253,7 +321,66 @@ export class TaskRepository {
 
       INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
       VALUES (2, 'create_daily_plans', datetime('now'));
+
+      CREATE TABLE IF NOT EXISTS pet_profiles (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        level INTEGER NOT NULL DEFAULT 1,
+        total_xp INTEGER NOT NULL DEFAULT 0,
+        emotion TEXT NOT NULL DEFAULT 'idle',
+        active_mode INTEGER NOT NULL DEFAULT 3,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS growth_events (
+        id TEXT PRIMARY KEY,
+        pet_id TEXT NOT NULL REFERENCES pet_profiles(id),
+        task_id TEXT REFERENCES tasks(id),
+        event_type TEXT NOT NULL,
+        xp_delta INTEGER NOT NULL,
+        reason TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS one_task_completion_reward
+      ON growth_events(task_id, event_type)
+      WHERE task_id IS NOT NULL AND event_type = 'task_completed';
+
+      CREATE TABLE IF NOT EXISTS events (
+        id TEXT PRIMARY KEY,
+        event_type TEXT NOT NULL,
+        entity_type TEXT,
+        entity_id TEXT,
+        payload_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+
+      INSERT OR IGNORE INTO pet_profiles (
+        id, name, level, total_xp, emotion, active_mode, created_at, updated_at
+      ) VALUES (
+        'stepbeast-default', '步步兽', 1, 0, 'idle', 3, datetime('now'), datetime('now')
+      );
+
     `);
+
+    const growthMigration = this.database.prepare(`
+      INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
+      VALUES (4, 'create_growth_system', datetime('now'))
+    `).run();
+    if (Number(growthMigration.changes) > 0) {
+      // 只在首次升级时修正旧任务，之后保留用户可能调整过的奖励。
+      this.database.exec(`
+        UPDATE tasks
+        SET reward_xp = CASE
+          WHEN estimated_minutes IS NULL OR estimated_minutes <= 15 THEN 10
+          WHEN estimated_minutes <= 45 THEN 20
+          WHEN estimated_minutes <= 90 THEN 35
+          ELSE 50
+        END
+        WHERE status NOT IN ('completed', 'cancelled');
+      `);
+    }
   }
 
   private readPlan(date: string): TodayPlan {
@@ -314,6 +441,30 @@ function mapTaskRow(row: TaskRow): TaskRecord {
     updatedAt: row.updated_at,
     completedAt: row.completed_at,
   };
+}
+
+function mapPetRow(row: PetRow): PetProfile {
+  return {
+    id: row.id,
+    name: row.name,
+    level: row.level,
+    totalXp: row.total_xp,
+    emotion: row.emotion,
+    activeMode: row.active_mode,
+  };
+}
+
+export function rewardForMinutes(estimatedMinutes: number | null): number {
+  if (estimatedMinutes === null || estimatedMinutes <= 15) return 10;
+  if (estimatedMinutes <= 45) return 20;
+  if (estimatedMinutes <= 90) return 35;
+  return 50;
+}
+
+export function levelForXp(totalXp: number): number {
+  let level = 1;
+  while (totalXp >= (100 * level * (level + 1)) / 2) level += 1;
+  return level;
 }
 
 function localDateKey(): string {

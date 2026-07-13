@@ -14,7 +14,7 @@ interface Window {
       list: () => Promise<StepBeastTask[]>;
       create: (input: CreateStepBeastTaskInput) => Promise<StepBeastTask>;
       update: (id: string, input: CreateStepBeastTaskInput) => Promise<StepBeastTask>;
-      complete: (id: string) => Promise<StepBeastTask>;
+      complete: (id: string) => Promise<StepBeastTaskCompletion>;
       delete: (id: string) => Promise<void>;
     };
     plan: {
@@ -29,8 +29,26 @@ interface Window {
       finish: (id: string) => Promise<StepBeastFocusSession>;
       abandon: (id: string) => Promise<StepBeastFocusSession>;
     };
+    pet: {
+      getProfile: () => Promise<StepBeastPetProfile>;
+    };
   };
 }
+
+type StepBeastPetProfile = {
+  id: string;
+  name: string;
+  level: number;
+  totalXp: number;
+  emotion: string;
+  activeMode: number;
+};
+
+type StepBeastTaskCompletion = {
+  task: StepBeastTask;
+  profile: StepBeastPetProfile;
+  xpGained: number;
+};
 
 type StepBeastFocusSession = {
   id: string;
