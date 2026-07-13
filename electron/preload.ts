@@ -20,4 +20,9 @@ contextBridge.exposeInMainWorld("stepBeast", {
     complete: (id: string) => ipcRenderer.invoke("task:complete", id),
     delete: (id: string) => ipcRenderer.invoke("task:delete", id),
   },
+  plan: {
+    getToday: () => ipcRenderer.invoke("plan:get-today"),
+    setRole: (taskId: string, role: "main" | "support" | null) =>
+      ipcRenderer.invoke("plan:set-role", taskId, role),
+  },
 });

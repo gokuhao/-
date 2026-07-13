@@ -17,8 +17,23 @@ interface Window {
       complete: (id: string) => Promise<StepBeastTask>;
       delete: (id: string) => Promise<void>;
     };
+    plan: {
+      getToday: () => Promise<StepBeastTodayPlan>;
+      setRole: (taskId: string, role: StepBeastPlanRole | null) => Promise<StepBeastTodayPlan>;
+    };
   };
 }
+
+type StepBeastPlanRole = "main" | "support";
+
+type StepBeastTodayPlan = {
+  date: string;
+  items: Array<{
+    role: StepBeastPlanRole;
+    sortOrder: number;
+    task: StepBeastTask;
+  }>;
+};
 
 type StepBeastTask = {
   id: string;

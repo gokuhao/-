@@ -154,6 +154,16 @@ ipcMain.handle("task:delete", (event, id: string) => {
   taskRepository.remove(id);
 });
 
+ipcMain.handle("plan:get-today", (event) => {
+  if (!senderWindow(event) || !taskRepository) throw new Error("今日计划尚未准备好");
+  return taskRepository.getTodayPlan();
+});
+
+ipcMain.handle("plan:set-role", (event, taskId: string, role: "main" | "support" | null) => {
+  if (!senderWindow(event) || !taskRepository) throw new Error("今日计划尚未准备好");
+  return taskRepository.setTodayRole(taskId, role);
+});
+
 app.whenReady().then(() => {
   taskRepository = new TaskRepository(path.join(app.getPath("userData"), "pet.db"));
   createMainWindow();
