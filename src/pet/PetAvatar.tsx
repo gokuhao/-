@@ -1,7 +1,8 @@
-import { useRef } from "react";
-import type { PointerEvent } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent } from "react";
 import type { PetState } from "./petMachine";
 import { dragState, PET_STATE_LABELS } from "./petMachine";
+import { getSpriteAnimation } from "./petSprites";
 
 type PetAvatarProps = {
   state: PetState;
@@ -14,6 +15,29 @@ type PointerStart = { x: number; y: number; screenX: number };
 export function PetAvatar({ state, onStateChange, onTap }: PetAvatarProps): React.JSX.Element {
   const startRef = useRef<PointerStart | null>(null);
   const stateBeforeDrag = useRef<PetState>(state);
+  const [frame, setFrame] = useState(0);
+  const animation = getSpriteAnimation(state);
+  const safeFrame = frame % animation.frames;
+
+  useEffect(() => {
+    setFrame(0);
+  }, [state]);
+
+  useEffect(() => {
+    const duration = animation.frameDurations?.[safeFrame]
+      ?? (safeFrame === animation.frames - 1
+        ? animation.lastFrameDuration
+        : animation.frameDuration);
+    const timer = window.setTimeout(() => {
+      setFrame((current) => (current + 1) % animation.frames);
+    }, duration);
+    return () => window.clearTimeout(timer);
+  }, [animation, frame, safeFrame]);
+
+  const spriteStyle = {
+    "--sprite-column": `${(safeFrame / 7) * 100}%`,
+    "--sprite-row": `${(animation.row / 8) * 100}%`,
+  } as CSSProperties;
 
   function handlePointerDown(event: PointerEvent<HTMLButtonElement>): void {
     if (event.button !== 0) return;
@@ -59,25 +83,12 @@ export function PetAvatar({ state, onStateChange, onTap }: PetAvatarProps): Reac
       onPointerUp={finishPointer}
       onPointerCancel={cancelPointer}
       onDoubleClick={() => {
+        const previousState = state;
         onStateChange("waving");
-        window.setTimeout(() => onStateChange("idle"), 1100);
+        window.setTimeout(() => onStateChange(previousState), 1100);
       }}
     >
-      <span className="pet-shadow" />
-      <span className="pet-tail" />
-      <span className="pet-body">
-        <span className="pet-ear pet-ear--left" />
-        <span className="pet-ear pet-ear--right" />
-        <span className="pet-face">
-          <span className="pet-eye pet-eye--left" />
-          <span className="pet-eye pet-eye--right" />
-          <span className="pet-mouth" />
-        </span>
-        <span className="pet-arm pet-arm--left" />
-        <span className="pet-arm pet-arm--right" />
-        <span className="pet-foot pet-foot--left" />
-        <span className="pet-foot pet-foot--right" />
-      </span>
+      <span className="pet-sprite" style={spriteStyle} aria-hidden="true" />
     </button>
   );
 }

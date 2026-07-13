@@ -62,37 +62,17 @@ button { font: inherit; }
 }
 
 .pet-avatar:active { cursor: grabbing; }
-.pet-shadow { position: absolute; left: 48px; bottom: 13px; width: 100px; height: 16px; border-radius: 50%; background: #0a0d0a47; filter: blur(3px); }
-.pet-body { position: absolute; left: 35px; bottom: 24px; width: 122px; height: 135px; border: 4px solid #233127; border-radius: 48% 48% 42% 42%; background: linear-gradient(145deg, #d8f2ad, #92c96f 72%); box-shadow: inset -10px -10px 0 #60954c2b, inset 8px 8px 0 #fff6; transform-origin: 50% 90%; animation: pet-breathe 3.2s ease-in-out infinite; }
-.pet-ear { position: absolute; top: -24px; width: 38px; height: 52px; border: 4px solid #233127; background: #a9dc7f; z-index: -1; }
-.pet-ear::after { content: ""; position: absolute; inset: 10px 8px 7px; border-radius: 60% 50%; background: #e49b92; opacity: .72; }
-.pet-ear--left { left: 7px; border-radius: 72% 28% 55% 45%; transform: rotate(-24deg); }
-.pet-ear--right { right: 7px; border-radius: 28% 72% 45% 55%; transform: rotate(24deg); }
-.pet-face { position: absolute; top: 36px; left: 20px; width: 74px; height: 52px; }
-.pet-eye { position: absolute; top: 4px; width: 14px; height: 19px; border: 3px solid #233127; border-radius: 50%; background: #fbfff5; overflow: hidden; }
-.pet-eye::after { content: ""; position: absolute; left: 4px; top: 6px; width: 5px; height: 7px; border-radius: 50%; background: #233127; }
-.pet-eye--left { left: 10px; }
-.pet-eye--right { right: 10px; }
-.pet-mouth { position: absolute; left: 30px; top: 34px; width: 15px; height: 8px; border-bottom: 3px solid #233127; border-radius: 50%; }
-.pet-arm { position: absolute; top: 73px; width: 29px; height: 48px; border: 4px solid #233127; border-radius: 50%; background: #9fd276; transform-origin: 50% 8px; z-index: -1; }
-.pet-arm--left { left: -14px; transform: rotate(16deg); }
-.pet-arm--right { right: -14px; transform: rotate(-16deg); }
-.pet-foot { position: absolute; bottom: -12px; width: 43px; height: 27px; border: 4px solid #233127; border-radius: 54% 54% 45% 45%; background: #8fc268; }
-.pet-foot--left { left: 10px; transform: rotate(-5deg); }
-.pet-foot--right { right: 10px; transform: rotate(5deg); }
-.pet-tail { position: absolute; right: 20px; bottom: 54px; width: 55px; height: 62px; border: 12px solid #7eb25e; border-left-color: transparent; border-bottom-color: transparent; border-radius: 50%; transform: rotate(25deg); transform-origin: left bottom; animation: tail-wag 2.4s ease-in-out infinite; }
-
-.pet-avatar--jumping .pet-body { animation: pet-jump .55s ease-in-out infinite alternate; }
-.pet-avatar--idle:hover .pet-body { animation: pet-jump .55s ease-in-out infinite alternate; }
-.pet-avatar--happy .pet-body { animation: pet-happy .55s ease-in-out infinite alternate; }
-.pet-avatar--focused .pet-body { animation: pet-focus 1.4s ease-in-out infinite; }
-.pet-avatar--thinking .pet-body { animation: pet-thinking 1.8s ease-in-out infinite; }
-.pet-avatar--resting .pet-eye { height: 8px; top: 11px; border-width: 0 0 3px; background: transparent; border-radius: 50%; }
-.pet-avatar--waving .pet-arm--right { animation: arm-wave .28s ease-in-out infinite alternate; }
-.pet-avatar--running-right .pet-body { animation: run-right .25s ease-in-out infinite alternate; }
-.pet-avatar--running-left .pet-body { animation: run-left .25s ease-in-out infinite alternate; }
-.pet-avatar--running-right .pet-eye::after { left: 7px; }
-.pet-avatar--running-left .pet-eye::after { left: 1px; }
+.pet-sprite {
+  display: block;
+  width: 192px;
+  height: 208px;
+  background-image: url("/pets/sprout-cat/spritesheet.webp");
+  background-repeat: no-repeat;
+  background-size: 800% 900%;
+  background-position: var(--sprite-column) var(--sprite-row);
+  image-rendering: auto;
+  pointer-events: none;
+}
 
 .action-panel {
   width: 350px;
@@ -120,15 +100,6 @@ button { font: inherit; }
 .panel-footer button { padding: 0; border: 0; color: #849081; background: transparent; cursor: pointer; }
 .panel-footer button:hover { color: #d7ddd4; }
 
-@keyframes pet-breathe { 0%,100% { transform: translateY(0) scaleY(1); } 50% { transform: translateY(-3px) scaleY(1.025); } }
-@keyframes tail-wag { 0%,100% { transform: rotate(17deg); } 50% { transform: rotate(39deg); } }
-@keyframes pet-jump { from { transform: translateY(0) rotate(-2deg); } to { transform: translateY(-22px) rotate(3deg); } }
-@keyframes pet-happy { from { transform: translateY(0) rotate(-4deg); } to { transform: translateY(-8px) rotate(4deg); } }
-@keyframes pet-focus { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-2px) scale(.98, 1.02); } }
-@keyframes pet-thinking { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(5deg); } }
-@keyframes arm-wave { from { transform: rotate(-22deg); } to { transform: rotate(-76deg); } }
-@keyframes run-right { from { transform: translate(-3px, 0) rotate(-3deg); } to { transform: translate(7px, -4px) rotate(4deg); } }
-@keyframes run-left { from { transform: translate(3px, 0) rotate(3deg); } to { transform: translate(-7px, -4px) rotate(-4deg); } }
 @keyframes panel-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {

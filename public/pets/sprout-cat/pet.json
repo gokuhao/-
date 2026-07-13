@@ -1,0 +1,7 @@
+{
+  "id": "sprout-cat",
+  "displayName": "Sprout Cat",
+  "description": "A cute hand-drawn golden cat with a small green sprout on its head, adapted as a Codex pet.",
+  "spriteVersionNumber": 1,
+  "spritesheetPath": "spritesheet.webp"
+}
