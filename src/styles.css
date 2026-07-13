@@ -76,6 +76,7 @@ button { font: inherit; }
 }
 
 .action-panel {
+  position: relative;
   width: 350px;
   margin-bottom: -4px;
   padding: 20px;
@@ -136,6 +137,18 @@ button { font: inherit; }
 .growth-status { display: grid; gap: 5px; min-width: 150px; }
 .xp-track { display: block; height: 4px; overflow: hidden; border-radius: 999px; background: #ffffff12; }
 .xp-track > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8fc66f, #d3ef9d); transition: width .35s ease; }
+.proposal-overlay { position: absolute; inset: 10px; z-index: 20; display: flex; flex-direction: column; padding: 18px; border: 1px solid #ffffff24; border-radius: 18px; background: #172019fa; box-shadow: 0 12px 38px #000b; }
+.proposal-overlay h2 { margin: 0; font-size: 15px; line-height: 1.4; }
+.proposal-retry { margin-top: 5px; color: #d8b36e; }
+.proposal-overlay ol { display: grid; gap: 7px; margin: 14px 0; padding: 0 0 0 20px; overflow-y: auto; }
+.proposal-overlay li { padding: 7px 9px; border-radius: 10px; background: #ffffff09; }
+.proposal-overlay li div { display: flex; justify-content: space-between; gap: 8px; }
+.proposal-overlay li strong { font-size: 12px; }
+.proposal-overlay li span, .proposal-overlay li small { color: #879685; font-size: 9px; }
+.proposal-overlay li small { display: block; margin-top: 4px; line-height: 1.35; }
+.proposal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: auto; }
+.proposal-actions button { padding: 8px 10px; border: 0; border-radius: 9px; color: #b8c3b5; background: #ffffff10; cursor: pointer; font-size: 10px; }
+.proposal-actions button:last-child { color: #1d2b1e; background: #bfe49e; font-weight: 700; }
 .panel-footer button { padding: 0; border: 0; color: #849081; background: transparent; cursor: pointer; }
 .panel-footer button:hover { color: #d7ddd4; }
 

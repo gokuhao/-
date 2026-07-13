@@ -9,6 +9,9 @@ type ActionPanelProps = {
   petProfile: StepBeastPetProfile | null;
   hermesStatus: StepBeastHermesStatus | null;
   hermesChecking: boolean;
+  decompositionProposal: StepBeastDecompositionProposal | null;
+  decomposingTaskId: string | null;
+  confirmingProposal: boolean;
   focusActive: boolean;
   focusPaused: boolean;
   remainingSeconds: number;
@@ -19,6 +22,9 @@ type ActionPanelProps = {
   onSetTaskRole: (id: string, role: StepBeastPlanRole | null) => Promise<void>;
   onToggleFocus: () => void;
   onRetryHermes: () => void;
+  onDecomposeTask: (id: string) => void;
+  onConfirmDecomposition: () => void;
+  onCancelDecomposition: () => void;
   onClose: () => void;
   onQuit: () => void;
 };
@@ -37,6 +43,9 @@ export function ActionPanel({
   petProfile,
   hermesStatus,
   hermesChecking,
+  decompositionProposal,
+  decomposingTaskId,
+  confirmingProposal,
   focusActive,
   focusPaused,
   remainingSeconds,
@@ -47,6 +56,9 @@ export function ActionPanel({
   onSetTaskRole,
   onToggleFocus,
   onRetryHermes,
+  onDecomposeTask,
+  onConfirmDecomposition,
+  onCancelDecomposition,
   onClose,
   onQuit,
 }: ActionPanelProps): React.JSX.Element {
@@ -222,6 +234,16 @@ export function ActionPanel({
                   {completingId === task.id ? "…" : "完成"}
                 </button>
               )}
+              {task.status !== "completed" && (
+                <button
+                  type="button"
+                  disabled={hermesStatus?.state !== "ready" || decomposingTaskId !== null}
+                  onClick={() => onDecomposeTask(task.id)}
+                  aria-label={`AI 拆解任务：${task.title}`}
+                >
+                  {decomposingTaskId === task.id ? "…" : "AI"}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -275,6 +297,31 @@ export function ActionPanel({
         </div>
         <button type="button" onClick={onQuit}>退出步步兽</button>
       </footer>
+
+      {decompositionProposal && (
+        <section className="proposal-overlay" aria-label="AI 任务拆解提案">
+          <p className="panel-kicker">Hermes 拆解提案</p>
+          <h2>{decompositionProposal.summary}</h2>
+          {decompositionProposal.attempts > 1 && <small className="proposal-retry">已自动修正一次格式</small>}
+          <ol>
+            {decompositionProposal.steps.map((step, index) => (
+              <li key={`${index}-${step.title}`}>
+                <div>
+                  <strong>{step.title}</strong>
+                  <span>{step.estimatedMinutes} 分钟</span>
+                </div>
+                <small>完成标准：{step.doneWhen}</small>
+              </li>
+            ))}
+          </ol>
+          <div className="proposal-actions">
+            <button type="button" onClick={onCancelDecomposition} disabled={confirmingProposal}>取消</button>
+            <button type="button" onClick={onConfirmDecomposition} disabled={confirmingProposal}>
+              {confirmingProposal ? "创建中…" : `确认创建 ${decompositionProposal.steps.length} 个子任务`}
+            </button>
+          </div>
+        </section>
+      )}
     </section>
   );
 }

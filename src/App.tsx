@@ -18,6 +18,9 @@ export function App(): React.JSX.Element {
   const [rewardNotice, setRewardNotice] = useState<string | null>(null);
   const [hermesStatus, setHermesStatus] = useState<StepBeastHermesStatus | null>(null);
   const [hermesChecking, setHermesChecking] = useState(false);
+  const [decompositionProposal, setDecompositionProposal] = useState<StepBeastDecompositionProposal | null>(null);
+  const [decomposingTaskId, setDecomposingTaskId] = useState<string | null>(null);
+  const [confirmingProposal, setConfirmingProposal] = useState(false);
 
   const taskRoles = Object.fromEntries(
     (todayPlan?.items ?? []).map((item) => [item.task.id, item.role]),
@@ -230,6 +233,51 @@ export function App(): React.JSX.Element {
     }
   }
 
+  async function decomposeTask(id: string): Promise<void> {
+    if (!window.stepBeast) return;
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    setTaskError(null);
+    setDecomposingTaskId(id);
+    setPetState("thinking");
+    try {
+      const proposal = await window.stepBeast.hermes.decomposeTask({
+        id: task.id,
+        title: task.title,
+        estimatedMinutes: task.estimatedMinutes,
+        nextAction: task.nextAction,
+      });
+      setDecompositionProposal(proposal);
+    } catch (error) {
+      setTaskError(errorMessage(error));
+      setPetState("idle");
+    } finally {
+      setDecomposingTaskId(null);
+    }
+  }
+
+  async function confirmDecomposition(): Promise<void> {
+    if (!window.stepBeast || !decompositionProposal) return;
+    setTaskError(null);
+    setConfirmingProposal(true);
+    try {
+      const children = await window.stepBeast.tasks.confirmDecomposition(
+        decompositionProposal.taskId,
+        decompositionProposal,
+      );
+      setTasks((current) => {
+        const existingIds = new Set(current.map((task) => task.id));
+        return [...children.filter((task) => !existingIds.has(task.id)), ...current];
+      });
+      setDecompositionProposal(null);
+      setPetState("happy");
+    } catch (error) {
+      setTaskError(errorMessage(error));
+    } finally {
+      setConfirmingProposal(false);
+    }
+  }
+
   return (
     <main className={`desktop-pet ${expanded ? "desktop-pet--expanded" : ""}`}>
       {expanded && (
@@ -241,6 +289,9 @@ export function App(): React.JSX.Element {
           petProfile={petProfile}
           hermesStatus={hermesStatus}
           hermesChecking={hermesChecking}
+          decompositionProposal={decompositionProposal}
+          decomposingTaskId={decomposingTaskId}
+          confirmingProposal={confirmingProposal}
           focusActive={focusActive}
           focusPaused={focusPaused}
           remainingSeconds={remainingSeconds}
@@ -251,6 +302,12 @@ export function App(): React.JSX.Element {
           onSetTaskRole={setTaskRole}
           onToggleFocus={() => void toggleFocus()}
           onRetryHermes={() => void refreshHermesStatus()}
+          onDecomposeTask={(id) => void decomposeTask(id)}
+          onConfirmDecomposition={() => void confirmDecomposition()}
+          onCancelDecomposition={() => {
+            setDecompositionProposal(null);
+            setPetState("idle");
+          }}
           onClose={() => setExpanded(false)}
           onQuit={() => window.stepBeast?.window.close()}
         />
