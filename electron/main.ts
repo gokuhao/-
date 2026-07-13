@@ -4,7 +4,7 @@ import path from "node:path";
 import { TaskRepository } from "./taskRepository.js";
 
 const COLLAPSED_SIZE = { width: 240, height: 260 };
-const EXPANDED_SIZE = { width: 380, height: 520 };
+const EXPANDED_SIZE = { width: 380, height: 620 };
 
 type SavedWindowState = { x: number; y: number };
 type DragSession = { offsetX: number; offsetY: number };

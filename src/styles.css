@@ -86,12 +86,29 @@ button { font: inherit; }
   animation: panel-in .2s ease-out;
 }
 .panel-header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.panel-actions { display: flex; gap: 7px; }
 .panel-kicker { margin: 0 0 6px; color: #a8cb93; font-size: 11px; letter-spacing: .08em; }
 .panel-header h1 { margin: 0; max-width: 270px; font-size: 18px; line-height: 1.4; }
 .icon-button { width: 30px; height: 30px; border: 0; border-radius: 50%; color: #bec8bb; background: #ffffff10; cursor: pointer; }
 .next-action { margin: 18px 0; padding: 13px 14px; border-radius: 14px; background: #ffffff0b; }
 .next-action span, .focus-label { display: block; margin-bottom: 5px; color: #91ad84; font-size: 11px; }
 .next-action strong { font-size: 13px; font-weight: 600; }
+.task-form { margin: 18px 0 12px; }
+.task-form label { display: block; margin-bottom: 6px; color: #91ad84; font-size: 11px; }
+.task-form div { display: flex; gap: 8px; }
+.task-form input { min-width: 0; flex: 1; padding: 10px 11px; border: 1px solid #ffffff20; border-radius: 10px; outline: 0; color: #f7f4e8; background: #ffffff0b; }
+.task-form input:focus { border-color: #a8cb93; }
+.task-form button, .task-item button { border: 0; border-radius: 9px; color: #1b291d; background: #bfe49e; font-weight: 700; cursor: pointer; }
+.task-form button { padding: 0 13px; }
+.task-form button:disabled, .task-item button:disabled, .primary-button:disabled { cursor: default; opacity: .45; }
+.task-error { margin: 8px 0; color: #f0a59b; font-size: 11px; }
+.task-list { display: grid; gap: 6px; max-height: 106px; margin: 0 0 14px; overflow-y: auto; }
+.task-empty { margin: 0; padding: 10px 12px; border-radius: 10px; color: #879385; background: #ffffff08; font-size: 12px; }
+.task-item { display: flex; min-height: 30px; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 7px 6px 11px; border-radius: 10px; background: #ffffff09; font-size: 12px; }
+.task-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-item button { padding: 5px 9px; font-size: 10px; }
+.task-item small { flex: 0 0 auto; color: #778276; }
+.task-item--completed span { color: #778276; text-decoration: line-through; }
 .focus-row { display: flex; align-items: center; justify-content: space-between; padding-top: 15px; border-top: 1px solid #ffffff16; }
 .timer { display: block; font-size: 27px; letter-spacing: .04em; }
 .primary-button { min-width: 74px; padding: 10px 16px; border: 0; border-radius: 12px; color: #1b291d; background: #bfe49e; font-weight: 700; cursor: pointer; }

@@ -11,6 +11,17 @@ export function App(): React.JSX.Element {
   const [petState, setPetState] = useState<PetState>("idle");
   const [focusActive, setFocusActive] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(FOCUS_SECONDS);
+  const [tasks, setTasks] = useState<StepBeastTask[]>([]);
+  const [taskError, setTaskError] = useState<string | null>(null);
+
+  const activeTask = tasks.find((task) => task.status === "todo" || task.status === "doing") ?? null;
+
+  useEffect(() => {
+    if (!window.stepBeast) return;
+    window.stepBeast.tasks.list()
+      .then(setTasks)
+      .catch((error: unknown) => setTaskError(errorMessage(error)));
+  }, []);
 
   useEffect(() => {
     window.stepBeast?.window.setExpanded(expanded);
@@ -32,6 +43,7 @@ export function App(): React.JSX.Element {
   }, [focusActive]);
 
   function toggleFocus(): void {
+    if (!activeTask) return;
     if (remainingSeconds === 0) setRemainingSeconds(FOCUS_SECONDS);
     setFocusActive((active) => {
       const next = !active;
@@ -40,12 +52,49 @@ export function App(): React.JSX.Element {
     });
   }
 
+  async function createTask(title: string): Promise<void> {
+    if (!window.stepBeast) throw new Error("请在步步兽桌面应用中创建任务");
+    setTaskError(null);
+    try {
+      const created = await window.stepBeast.tasks.create({ title, estimatedMinutes: 25 });
+      setTasks((current) => [created, ...current]);
+      setPetState("happy");
+    } catch (error) {
+      setTaskError(errorMessage(error));
+      throw error;
+    }
+  }
+
+  async function completeTask(id: string): Promise<void> {
+    if (!window.stepBeast) throw new Error("请在步步兽桌面应用中完成任务");
+    setTaskError(null);
+    try {
+      const completed = await window.stepBeast.tasks.complete(id);
+      setTasks((current) => current
+        .map((task) => task.id === id ? completed : task)
+        .sort((left, right) => Number(left.status === "completed") - Number(right.status === "completed")));
+      setPetState("happy");
+      if (activeTask?.id === id) {
+        setFocusActive(false);
+        setRemainingSeconds(FOCUS_SECONDS);
+      }
+    } catch (error) {
+      setTaskError(errorMessage(error));
+      throw error;
+    }
+  }
+
   return (
     <main className={`desktop-pet ${expanded ? "desktop-pet--expanded" : ""}`}>
       {expanded && (
         <ActionPanel
+          tasks={tasks}
+          activeTask={activeTask}
+          taskError={taskError}
           focusActive={focusActive}
           remainingSeconds={remainingSeconds}
+          onCreateTask={createTask}
+          onCompleteTask={completeTask}
           onToggleFocus={toggleFocus}
           onClose={() => setExpanded(false)}
           onQuit={() => window.stepBeast?.window.close()}
@@ -64,4 +113,8 @@ export function App(): React.JSX.Element {
       </div>
     </main>
   );
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "任务操作失败，请重试";
 }
