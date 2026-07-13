@@ -49,5 +49,7 @@ contextBridge.exposeInMainWorld("stepBeast", {
   },
   hermes: {
     getStatus: () => ipcRenderer.invoke("hermes:get-status"),
+    decomposeTask: (task: { id: string; title: string; estimatedMinutes: number | null; nextAction: string | null }) =>
+      ipcRenderer.invoke("hermes:decompose-task", task),
   },
 });

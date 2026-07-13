@@ -183,6 +183,11 @@ ipcMain.handle("hermes:get-status", (event) => {
   return hermesClient.getStatus();
 });
 
+ipcMain.handle("hermes:decompose-task", (event, task) => {
+  if (!senderWindow(event) || !hermesClient) throw new Error("Hermes Gateway 尚未准备好");
+  return hermesClient.decomposeTask(task);
+});
+
 ipcMain.handle("focus:get-current", (event) => {
   if (!senderWindow(event) || !focusRepository) throw new Error("专注系统尚未准备好");
   return focusRepository.getCurrent();

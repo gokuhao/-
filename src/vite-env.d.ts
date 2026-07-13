@@ -38,6 +38,12 @@ interface Window {
     };
     hermes: {
       getStatus: () => Promise<StepBeastHermesStatus>;
+      decomposeTask: (task: {
+        id: string;
+        title: string;
+        estimatedMinutes: number | null;
+        nextAction: string | null;
+      }) => Promise<StepBeastDecompositionProposal>;
     };
   };
 }
