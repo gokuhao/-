@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, screen } from "electron";
 import fs from "node:fs";
 import path from "node:path";
+import { FocusRepository } from "./focusRepository.js";
 import { TaskRepository } from "./taskRepository.js";
 
 const COLLAPSED_SIZE = { width: 240, height: 260 };
@@ -11,6 +12,7 @@ type DragSession = { offsetX: number; offsetY: number };
 
 const dragSessions = new Map<number, DragSession>();
 let taskRepository: TaskRepository | null = null;
+let focusRepository: FocusRepository | null = null;
 
 function getWindowStatePath(): string {
   return path.join(app.getPath("userData"), "window-state.json");
@@ -164,8 +166,40 @@ ipcMain.handle("plan:set-role", (event, taskId: string, role: "main" | "support"
   return taskRepository.setTodayRole(taskId, role);
 });
 
+ipcMain.handle("focus:get-current", (event) => {
+  if (!senderWindow(event) || !focusRepository) throw new Error("专注系统尚未准备好");
+  return focusRepository.getCurrent();
+});
+
+ipcMain.handle("focus:start", (event, taskId: string, plannedSeconds: number) => {
+  if (!senderWindow(event) || !focusRepository) throw new Error("专注系统尚未准备好");
+  return focusRepository.start(taskId, plannedSeconds);
+});
+
+ipcMain.handle("focus:pause", (event, id: string) => {
+  if (!senderWindow(event) || !focusRepository) throw new Error("专注系统尚未准备好");
+  return focusRepository.pause(id);
+});
+
+ipcMain.handle("focus:resume", (event, id: string) => {
+  if (!senderWindow(event) || !focusRepository) throw new Error("专注系统尚未准备好");
+  return focusRepository.resume(id);
+});
+
+ipcMain.handle("focus:finish", (event, id: string) => {
+  if (!senderWindow(event) || !focusRepository) throw new Error("专注系统尚未准备好");
+  return focusRepository.finish(id);
+});
+
+ipcMain.handle("focus:abandon", (event, id: string) => {
+  if (!senderWindow(event) || !focusRepository) throw new Error("专注系统尚未准备好");
+  return focusRepository.abandon(id);
+});
+
 app.whenReady().then(() => {
-  taskRepository = new TaskRepository(path.join(app.getPath("userData"), "pet.db"));
+  const databasePath = path.join(app.getPath("userData"), "pet.db");
+  taskRepository = new TaskRepository(databasePath);
+  focusRepository = new FocusRepository(databasePath);
   createMainWindow();
 
   app.on("activate", () => {
@@ -176,6 +210,8 @@ app.whenReady().then(() => {
 });
 
 app.on("before-quit", () => {
+  focusRepository?.close();
+  focusRepository = null;
   taskRepository?.close();
   taskRepository = null;
 });

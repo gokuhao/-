@@ -21,8 +21,27 @@ interface Window {
       getToday: () => Promise<StepBeastTodayPlan>;
       setRole: (taskId: string, role: StepBeastPlanRole | null) => Promise<StepBeastTodayPlan>;
     };
+    focus: {
+      getCurrent: () => Promise<StepBeastFocusSession | null>;
+      start: (taskId: string, plannedSeconds: number) => Promise<StepBeastFocusSession>;
+      pause: (id: string) => Promise<StepBeastFocusSession>;
+      resume: (id: string) => Promise<StepBeastFocusSession>;
+      finish: (id: string) => Promise<StepBeastFocusSession>;
+      abandon: (id: string) => Promise<StepBeastFocusSession>;
+    };
   };
 }
+
+type StepBeastFocusSession = {
+  id: string;
+  taskId: string;
+  plannedSeconds: number;
+  elapsedSeconds: number;
+  status: "active" | "paused" | "completed" | "abandoned";
+  startedAt: string;
+  pausedAt: string | null;
+  endedAt: string | null;
+};
 
 type StepBeastPlanRole = "main" | "support";
 

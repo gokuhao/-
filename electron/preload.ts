@@ -25,4 +25,12 @@ contextBridge.exposeInMainWorld("stepBeast", {
     setRole: (taskId: string, role: "main" | "support" | null) =>
       ipcRenderer.invoke("plan:set-role", taskId, role),
   },
+  focus: {
+    getCurrent: () => ipcRenderer.invoke("focus:get-current"),
+    start: (taskId: string, plannedSeconds: number) => ipcRenderer.invoke("focus:start", taskId, plannedSeconds),
+    pause: (id: string) => ipcRenderer.invoke("focus:pause", id),
+    resume: (id: string) => ipcRenderer.invoke("focus:resume", id),
+    finish: (id: string) => ipcRenderer.invoke("focus:finish", id),
+    abandon: (id: string) => ipcRenderer.invoke("focus:abandon", id),
+  },
 });
