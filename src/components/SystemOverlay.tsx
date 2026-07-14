@@ -17,7 +17,7 @@ type Props = {
   projectConfirming: boolean;
   onCreateTask: (title: string) => Promise<void>;
   onCompleteTask: (id: string) => Promise<void>;
-  onToggleFocus: () => void;
+  onOpenFocus: () => void;
   onRetryHermes: () => void;
   onRetryObsidian: () => void;
   onProposeProjectSync: () => void;
@@ -51,7 +51,7 @@ export function SystemOverlay({
   projectConfirming,
   onCreateTask,
   onCompleteTask,
-  onToggleFocus,
+  onOpenFocus,
   onRetryHermes,
   onRetryObsidian,
   onProposeProjectSync,
@@ -190,7 +190,7 @@ export function SystemOverlay({
   const heading = SECTION_TITLES[activeView];
 
   function openFocus(): void {
-    onToggleFocus();
+    onOpenFocus();
     onClose();
   }
 

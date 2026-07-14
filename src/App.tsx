@@ -10,6 +10,7 @@ export function App(): React.JSX.Element {
   const [expanded, setExpanded] = useState(false);
   const [petState, setPetState] = useState<PetState>("idle");
   const [focusSession, setFocusSession] = useState<StepBeastFocusSession | null>(null);
+  const [focusSetupOpen, setFocusSetupOpen] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(FOCUS_SECONDS);
   const [tasks, setTasks] = useState<StepBeastTask[]>([]);
   const [taskError, setTaskError] = useState<string | null>(null);
@@ -105,22 +106,34 @@ export function App(): React.JSX.Element {
     return () => window.clearTimeout(timer);
   }, [rewardNotice]);
 
-  async function toggleFocus(): Promise<void> {
-    if (!window.stepBeast || (!activeTask && !focusSession)) return;
+  async function startFocus(taskId: string, plannedMinutes: number): Promise<void> {
+    if (!window.stepBeast) throw new Error("请在步步兽桌面应用中开始专注");
+    if (!Number.isInteger(plannedMinutes) || plannedMinutes < 5 || plannedMinutes > 180) {
+      throw new Error("专注时间需要在 5 到 180 分钟之间");
+    }
     setTaskError(null);
     try {
-      if (!focusSession && activeTask) {
-        const plannedSeconds = Math.min(activeTask.estimatedMinutes ?? 25, 240) * 60;
-        const started = await window.stepBeast.focus.start(activeTask.id, plannedSeconds);
-        setFocusSession(started);
-        setRemainingSeconds(started.plannedSeconds - started.elapsedSeconds);
-        setPetState("focused");
-      } else if (focusSession?.status === "active") {
+      const started = await window.stepBeast.focus.start(taskId, plannedMinutes * 60);
+      setFocusSession(started);
+      setFocusSetupOpen(false);
+      setRemainingSeconds(started.plannedSeconds - started.elapsedSeconds);
+      setPetState("focused");
+    } catch (error) {
+      setTaskError(errorMessage(error));
+      throw error;
+    }
+  }
+
+  async function toggleFocus(): Promise<void> {
+    if (!window.stepBeast || !focusSession) return;
+    setTaskError(null);
+    try {
+      if (focusSession.status === "active") {
         const paused = await window.stepBeast.focus.pause(focusSession.id);
         setFocusSession(paused);
         setRemainingSeconds(Math.max(0, paused.plannedSeconds - paused.elapsedSeconds));
         setPetState("resting");
-      } else if (focusSession?.status === "paused") {
+      } else if (focusSession.status === "paused") {
         const resumed = await window.stepBeast.focus.resume(focusSession.id);
         setFocusSession(resumed);
         setRemainingSeconds(Math.max(0, resumed.plannedSeconds - resumed.elapsedSeconds));
@@ -131,11 +144,30 @@ export function App(): React.JSX.Element {
     }
   }
 
+  async function stopFocus(): Promise<void> {
+    if (!window.stepBeast || !focusSession) return;
+    setTaskError(null);
+    try {
+      const stopped = await window.stepBeast.focus.finish(focusSession.id);
+      setTasks(await window.stepBeast.tasks.list());
+      setFocusSession(null);
+      setRemainingSeconds(FOCUS_SECONDS);
+      setRewardNotice(`已保存 ${formatFocusDuration(stopped.elapsedSeconds)}专注`);
+      setPetState("happy");
+    } catch (error) {
+      setTaskError(errorMessage(error));
+      throw error;
+    }
+  }
+
   async function finishExpiredFocus(id: string): Promise<void> {
     if (!window.stepBeast) return;
     try {
       await window.stepBeast.focus.finish(id);
+      setTasks(await window.stepBeast.tasks.list());
       setFocusSession(null);
+      setRemainingSeconds(FOCUS_SECONDS);
+      setRewardNotice("本次专注已完成，任务仍可继续推进");
       setPetState("happy");
     } catch (error) {
       setTaskError(errorMessage(error));
@@ -162,6 +194,7 @@ export function App(): React.JSX.Element {
       if (focusSession?.taskId === id) {
         await window.stepBeast.focus.finish(focusSession.id);
         setFocusSession(null);
+        setFocusSetupOpen(false);
         setRemainingSeconds(FOCUS_SECONDS);
       }
       const completion = await window.stepBeast.tasks.complete(id);
@@ -206,6 +239,7 @@ export function App(): React.JSX.Element {
       if (focusSession?.taskId === id) {
         await window.stepBeast.focus.abandon(focusSession.id);
         setFocusSession(null);
+        setFocusSetupOpen(false);
         setRemainingSeconds(FOCUS_SECONDS);
       }
       await window.stepBeast.tasks.delete(id);
@@ -398,6 +432,8 @@ export function App(): React.JSX.Element {
           confirmingDailyPlan={confirmingDailyPlan}
           focusActive={focusActive}
           focusPaused={focusPaused}
+          focusSetupOpen={focusSetupOpen}
+          focusPlannedSeconds={focusSession?.plannedSeconds ?? FOCUS_SECONDS}
           remainingSeconds={remainingSeconds}
           onCreateTask={createTask}
           onUpdateTask={updateTask}
@@ -405,6 +441,10 @@ export function App(): React.JSX.Element {
           onCompleteTask={completeTask}
           onSetTaskRole={setTaskRole}
           onToggleFocus={() => void toggleFocus()}
+          onOpenFocusSetup={() => setFocusSetupOpen(true)}
+          onCancelFocusSetup={() => setFocusSetupOpen(false)}
+          onStartFocus={startFocus}
+          onStopFocus={stopFocus}
           onRetryHermes={() => void refreshHermesStatus()}
           onRetryObsidian={() => void refreshObsidianStatus()}
           onDecomposeTask={(id) => void decomposeTask(id)}
@@ -438,7 +478,9 @@ export function App(): React.JSX.Element {
           projectConfirming={projectConfirming}
           onCreateTask={createTask}
           onCompleteTask={completeTask}
-          onToggleFocus={() => void toggleFocus()}
+          onOpenFocus={() => {
+            if (!focusSession) setFocusSetupOpen(true);
+          }}
           onRetryHermes={() => void refreshHermesStatus()}
           onRetryObsidian={() => void refreshObsidianStatus()}
           onProposeProjectSync={() => void proposeProjectSync()}
@@ -469,4 +511,9 @@ export function App(): React.JSX.Element {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "任务操作失败，请重试";
+}
+
+function formatFocusDuration(seconds: number): string {
+  if (seconds < 60) return "不足 1 分钟的";
+  return `${Math.round(seconds / 60)} 分钟`;
 }

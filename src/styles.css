@@ -277,6 +277,42 @@ button { font: inherit; }
 .apple-focus-ring strong { color: #f5f6f3; font-size: 24px; letter-spacing: .03em; }
 .apple-focus-ring span { color: #7f8a84; font-size: 9px; }
 .apple-focus-controls { display: flex; width: 100%; justify-content: center; gap: 8px; }
+.apple-focus-controls .apple-stop-button { color: #e4b59a; }
+.apple-stop-confirm { width: 100%; padding: 10px 12px; border: 1px solid #d79a7230; border-radius: 12px; background: #d79a7210; }
+.apple-stop-confirm p { margin: 0 0 8px; color: #bd9b85; font-size: 9px; line-height: 1.5; text-align: center; }
+.apple-stop-confirm > div { display: flex; justify-content: center; gap: 7px; }
+.apple-stop-confirm button { min-height: 28px; padding: 6px 10px; border: 0; border-radius: 9px; color: #ced4d0; background: #ffffff0d; cursor: pointer; font-size: 9px; }
+.apple-stop-confirm button:last-child { color: #fff; background: #b8604d; }
+.apple-stop-confirm button:disabled { opacity: .45; }
+.apple-focus-setup { display: grid; gap: 14px; padding: 5px 0 10px; }
+.apple-focus-setup-heading { display: grid; gap: 4px; }
+.apple-focus-setup-heading span { color: #9baca1; font-size: 10px; }
+.apple-focus-setup-heading strong { color: #f4f5f2; font-size: 16px; }
+.apple-focus-field { display: grid; gap: 6px; }
+.apple-focus-field > span, .apple-duration-field legend, .apple-custom-duration span { color: #9baca1; font-size: 10px; }
+.apple-focus-field select, .apple-custom-duration input {
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid #ffffff18;
+  border-radius: 11px;
+  outline: 0;
+  color: #edf0ed;
+  background: #ffffff0d;
+  font-size: 11px;
+}
+.apple-duration-field { margin: 0; padding: 0; border: 0; }
+.apple-duration-field legend { margin-bottom: 7px; }
+.apple-duration-field > div { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.apple-duration-field button { min-height: 36px; padding: 6px 4px; border: 1px solid #ffffff12; border-radius: 10px; color: #aeb8b1; background: #ffffff08; cursor: pointer; font-size: 9px; }
+.apple-duration-field button.is-active { border-color: #6ca4d9; color: #fff; background: #0a84ff; }
+.apple-custom-duration { display: grid; grid-template-columns: 1fr 104px; align-items: center; gap: 10px; }
+.apple-focus-setup-summary { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 11px; color: #9baca1; background: #ffffff08; font-size: 10px; }
+.apple-focus-setup-summary strong { color: #f4f5f2; font-size: 12px; }
+.apple-focus-setup-actions { display: flex; gap: 8px; }
+.apple-focus-setup-actions button { min-height: 38px; padding: 8px 14px; border: 0; border-radius: 11px; color: #ced4d0; background: #ffffff0d; cursor: pointer; font-size: 10px; }
+.apple-focus-setup-actions .apple-primary-button { flex: 1; color: #fff; background: #0a84ff; font-weight: 700; }
+.apple-focus-setup-actions button:disabled { cursor: default; opacity: .4; }
 .apple-service-alerts { display: flex; gap: 6px; margin-top: 7px; }
 .apple-service-alerts button { padding: 4px 7px; border: 1px solid #d29b7630; border-radius: 8px; color: #d8ab8d; background: #d29b760d; cursor: pointer; font-size: 8px; }
 .apple-bottom-nav { position: absolute; right: 21px; bottom: 15px; left: 21px; display: grid; grid-template-columns: repeat(3, 1fr); padding-top: 10px; border-top: 1px solid #ffffff14; }
@@ -335,6 +371,20 @@ button { font: inherit; }
 .apple-ready-dot { background: #79a866; box-shadow: 0 0 0 3px #79a86622; }
 .icon-button, .apple-main-actions button, .apple-focus-controls button { color: #5f5549; background: #ffffff8f; }
 .apple-main-actions .apple-primary-button, .apple-focus-controls .apple-primary-button { color: #fff; background: #202522; box-shadow: 0 7px 18px #20252224; }
+.apple-focus-controls .apple-stop-button { color: #9c4f3d; background: #f1d8c8; }
+.apple-stop-confirm { border-color: #a85e3f26; background: #f3dfd1; }
+.apple-stop-confirm p { color: #795f4e; }
+.apple-stop-confirm button { color: #5f5549; background: #ffffff8f; }
+.apple-stop-confirm button:last-child { color: #fff; background: #a65340; }
+.apple-focus-setup-heading span, .apple-focus-field > span, .apple-duration-field legend, .apple-custom-duration span { color: #786c5d; }
+.apple-focus-setup-heading strong { color: #29251f; }
+.apple-focus-field select, .apple-custom-duration input { border-color: #49351f24; color: #2e281f; background: #ffffffa8; }
+.apple-duration-field button { border-color: #49351f1a; color: #6d6256; background: #ffffff8a; }
+.apple-duration-field button.is-active { border-color: #3f7041; color: #fff; background: #3f7041; }
+.apple-focus-setup-summary { color: #786c5d; background: #ffffff70; }
+.apple-focus-setup-summary strong { color: #29251f; }
+.apple-focus-setup-actions button { color: #5f5549; background: #ffffff8f; }
+.apple-focus-setup-actions .apple-primary-button { color: #fff; background: #202522; }
 .apple-next-section, .apple-bottom-nav, .apple-task-manager { border-color: #49351f18; }
 .apple-section-heading { color: #554c41; }
 .apple-section-heading button { color: #5d8450; }

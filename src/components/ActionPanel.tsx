@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 
 type ActionPanelProps = {
@@ -18,6 +18,8 @@ type ActionPanelProps = {
   confirmingDailyPlan: boolean;
   focusActive: boolean;
   focusPaused: boolean;
+  focusSetupOpen: boolean;
+  focusPlannedSeconds: number;
   remainingSeconds: number;
   onCreateTask: (title: string) => Promise<void>;
   onUpdateTask: (id: string, title: string) => Promise<void>;
@@ -25,6 +27,10 @@ type ActionPanelProps = {
   onCompleteTask: (id: string) => Promise<void>;
   onSetTaskRole: (id: string, role: StepBeastPlanRole | null) => Promise<void>;
   onToggleFocus: () => void;
+  onOpenFocusSetup: () => void;
+  onCancelFocusSetup: () => void;
+  onStartFocus: (taskId: string, plannedMinutes: number) => Promise<void>;
+  onStopFocus: () => Promise<void>;
   onRetryHermes: () => void;
   onRetryObsidian: () => void;
   onDecomposeTask: (id: string) => void;
@@ -60,6 +66,8 @@ export function ActionPanel({
   confirmingDailyPlan,
   focusActive,
   focusPaused,
+  focusSetupOpen,
+  focusPlannedSeconds,
   remainingSeconds,
   onCreateTask,
   onUpdateTask,
@@ -67,6 +75,10 @@ export function ActionPanel({
   onCompleteTask,
   onSetTaskRole,
   onToggleFocus,
+  onOpenFocusSetup,
+  onCancelFocusSetup,
+  onStartFocus,
+  onStopFocus,
   onRetryHermes,
   onRetryObsidian,
   onDecomposeTask,
@@ -88,13 +100,21 @@ export function ActionPanel({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [changingRoleId, setChangingRoleId] = useState<string | null>(null);
   const [managingTasks, setManagingTasks] = useState(false);
+  const [selectedFocusTaskId, setSelectedFocusTaskId] = useState("");
+  const [focusDuration, setFocusDuration] = useState<number | "custom">(25);
+  const [customFocusMinutes, setCustomFocusMinutes] = useState("30");
+  const [startingFocus, setStartingFocus] = useState(false);
+  const [confirmingStop, setConfirmingStop] = useState(false);
+  const [stoppingFocus, setStoppingFocus] = useState(false);
   const mainCount = Object.values(taskRoles).filter((role) => role === "main").length;
   const supportCount = Object.values(taskRoles).filter((role) => role === "support").length;
   const displayedTasks = [...tasks]
     .sort((left, right) => roleRank(taskRoles[left.id]) - roleRank(taskRoles[right.id]));
+  const activeTasks = displayedTasks.filter(isActiveTask);
   const nextTask = displayedTasks.find((task) => isActiveTask(task) && task.id !== activeTask?.id) ?? null;
-  const plannedSeconds = Math.max(60, Math.min(activeTask?.estimatedMinutes ?? 25, 240) * 60);
-  const focusRatio = Math.max(0, Math.min(1, remainingSeconds / plannedSeconds));
+  const selectedFocusMinutes = focusDuration === "custom" ? Number(customFocusMinutes) : focusDuration;
+  const focusDurationValid = Number.isInteger(selectedFocusMinutes) && selectedFocusMinutes >= 5 && selectedFocusMinutes <= 180;
+  const focusRatio = Math.max(0, Math.min(1, remainingSeconds / focusPlannedSeconds));
   const ringCircumference = 2 * Math.PI * 54;
   const now = new Date();
   const hour = now.getHours();
@@ -104,6 +124,43 @@ export function ActionPanel({
     day: "numeric",
     weekday: "short",
   }).format(now);
+
+  useEffect(() => {
+    if (!focusSetupOpen) return;
+    setSelectedFocusTaskId((current) => {
+      if (tasks.some((task) => task.id === current && isActiveTask(task))) return current;
+      return activeTask?.id ?? tasks.find(isActiveTask)?.id ?? "";
+    });
+  }, [focusSetupOpen, activeTask?.id, tasks]);
+
+  useEffect(() => {
+    if (!focusActive && !focusPaused) setConfirmingStop(false);
+  }, [focusActive, focusPaused]);
+
+  async function startSelectedFocus(): Promise<void> {
+    if (!selectedFocusTaskId || !focusDurationValid || startingFocus) return;
+    setStartingFocus(true);
+    try {
+      await onStartFocus(selectedFocusTaskId, selectedFocusMinutes);
+    } catch {
+      // 父组件统一显示可读错误，保留当前选择方便用户修改。
+    } finally {
+      setStartingFocus(false);
+    }
+  }
+
+  async function confirmStopFocus(): Promise<void> {
+    if (stoppingFocus) return;
+    setStoppingFocus(true);
+    try {
+      await onStopFocus();
+      setConfirmingStop(false);
+    } catch {
+      // 父组件统一显示可读错误。
+    } finally {
+      setStoppingFocus(false);
+    }
+  }
 
   async function submitTask(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -291,8 +348,32 @@ export function ActionPanel({
           </div>
           <div className="apple-focus-controls">
             <button type="button" onClick={onToggleFocus}>{focusActive ? "暂停" : "继续"}</button>
+            <button className="apple-stop-button" type="button" onClick={() => setConfirmingStop(true)}>停止专注</button>
             <button className="apple-primary-button" type="button" disabled={!activeTask || completingId === activeTask.id} onClick={() => activeTask && void completeTask(activeTask.id)}>完成任务</button>
           </div>
+          {confirmingStop && (
+            <div className="apple-stop-confirm" role="alertdialog" aria-label="确认停止专注">
+              <p>结束后会保存本次专注时间，任务保持未完成。</p>
+              <div><button type="button" disabled={stoppingFocus} onClick={() => setConfirmingStop(false)}>继续专注</button><button type="button" disabled={stoppingFocus} onClick={() => void confirmStopFocus()}>{stoppingFocus ? "保存中…" : "确认停止"}</button></div>
+            </div>
+          )}
+        </div>
+      ) : focusSetupOpen ? (
+        <div className="apple-focus-setup">
+          <div className="apple-focus-setup-heading"><span>开始一次专注</span><strong>先选任务，再决定投入多久</strong></div>
+          <label className="apple-focus-field">
+            <span>本次专注任务</span>
+            <select value={selectedFocusTaskId} onChange={(event) => setSelectedFocusTaskId(event.target.value)}>
+              {activeTasks.length === 0 ? <option value="">暂无可专注任务</option> : activeTasks.map((task) => <option key={task.id} value={task.id}>{task.title}</option>)}
+            </select>
+          </label>
+          <fieldset className="apple-duration-field">
+            <legend>专注时长</legend>
+            <div>{[15, 25, 45, 60].map((minutes) => <button className={focusDuration === minutes ? "is-active" : ""} type="button" key={minutes} onClick={() => setFocusDuration(minutes)}>{minutes} 分钟</button>)}<button className={focusDuration === "custom" ? "is-active" : ""} type="button" onClick={() => setFocusDuration("custom")}>自定义</button></div>
+          </fieldset>
+          {focusDuration === "custom" && <label className="apple-custom-duration"><span>输入 5～180 分钟</span><input type="number" min={5} max={180} step={1} value={customFocusMinutes} onChange={(event) => setCustomFocusMinutes(event.target.value)} /></label>}
+          <div className="apple-focus-setup-summary"><span>准备专注</span><strong>{focusDurationValid ? `${selectedFocusMinutes} 分钟` : "请输入有效时间"}</strong></div>
+          <div className="apple-focus-setup-actions"><button type="button" onClick={onCancelFocusSetup}>取消</button><button className="apple-primary-button" type="button" disabled={!selectedFocusTaskId || !focusDurationValid || startingFocus} onClick={() => void startSelectedFocus()}>{startingFocus ? "启动中…" : "▶ 开始专注"}</button></div>
         </div>
       ) : (
         <>
@@ -301,7 +382,7 @@ export function ActionPanel({
             <h1>{activeTask?.title ?? "先添加今天最重要的任务"}</h1>
             <p>{activeTask?.nextAction ?? (activeTask ? "从一个 25 分钟专注开始" : "创建任务后，步步兽会陪你开始行动。")}</p>
             <div className="apple-main-actions">
-              <button className="apple-primary-button" type="button" onClick={onToggleFocus} disabled={!activeTask}>▶ 开始专注</button>
+              <button className="apple-primary-button" type="button" onClick={onOpenFocusSetup} disabled={!activeTask}>▶ 开始专注</button>
               <button type="button" onClick={() => setManagingTasks((value) => !value)}>{managingTasks ? "收起任务" : "管理任务"}</button>
             </div>
           </div>

@@ -42,8 +42,8 @@ export class FocusRepository {
   }
 
   start(taskId: string, plannedSeconds: number): FocusSession {
-    if (!Number.isInteger(plannedSeconds) || plannedSeconds < 60 || plannedSeconds > 14_400) {
-      throw new Error("专注时间需要在 1 分钟到 4 小时之间");
+    if (!Number.isInteger(plannedSeconds) || plannedSeconds < 300 || plannedSeconds > 10_800) {
+      throw new Error("专注时间需要在 5 到 180 分钟之间");
     }
     const task = this.database.prepare(`
       SELECT status FROM tasks WHERE id = ? AND deleted_at IS NULL

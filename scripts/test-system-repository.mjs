@@ -29,6 +29,17 @@ try {
   assert.equal(classifyApplication("chrome.exe"), "other");
 
   const task = tasks.create({ title: "临时测试任务", estimatedMinutes: 25 });
+  assert.throws(() => focus.start(task.id, 4 * 60), /5 到 180 分钟/);
+  assert.throws(() => focus.start(task.id, 181 * 60), /5 到 180 分钟/);
+  const session = focus.start(task.id, 25 * 60);
+  assert.equal(session.taskId, task.id);
+  assert.equal(session.plannedSeconds, 25 * 60);
+  assert.equal(focus.pause(session.id).status, "paused");
+  assert.equal(focus.resume(session.id).status, "active");
+  const stopped = focus.finish(session.id);
+  assert.equal(stopped.status, "completed");
+  assert.equal(stopped.endedAt !== null, true);
+  assert.equal(focus.getCurrent(), null);
   tasks.complete(task.id);
   const facts = system.getDailyFacts();
   assert.equal(facts.completedTasks.some((item) => item.id === task.id), true);
