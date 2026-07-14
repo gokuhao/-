@@ -81,8 +81,8 @@ export function App(): React.JSX.Element {
   }, []);
 
   useEffect(() => {
-    window.stepBeast?.window.setExpanded(expanded);
-  }, [expanded]);
+    window.stepBeast?.window.setExpanded(expanded, activeTool ? "workbench" : "panel");
+  }, [activeTool, expanded]);
 
   useEffect(() => {
     if (!focusSession || focusSession.status !== "active") return;
@@ -379,8 +379,8 @@ export function App(): React.JSX.Element {
   }
 
   return (
-    <main className={`desktop-pet ${expanded ? "desktop-pet--expanded" : ""}`}>
-      {expanded && (
+    <main className={`desktop-pet ${expanded ? "desktop-pet--expanded" : ""} ${activeTool ? "desktop-pet--workbench" : ""}`}>
+      {expanded && !activeTool && (
         <ActionPanel
           tasks={tasks}
           taskRoles={taskRoles}
@@ -437,10 +437,15 @@ export function App(): React.JSX.Element {
         <SystemOverlay
           tool={activeTool}
           tasks={tasks}
+          activeTask={activeTask}
+          focusActive={focusActive}
           petProfile={petProfile}
           hermesStatus={hermesStatus}
           obsidianStatus={obsidianStatus}
           projectSyncing={projectSyncing}
+          onCreateTask={createTask}
+          onCompleteTask={completeTask}
+          onToggleFocus={() => void toggleFocus()}
           onRetryHermes={() => void refreshHermesStatus()}
           onRetryObsidian={() => void refreshObsidianStatus()}
           onProposeProjectSync={() => void proposeProjectSync()}
@@ -450,7 +455,7 @@ export function App(): React.JSX.Element {
         />
       )}
 
-      <div className="pet-stage">
+      {!activeTool && <div className="pet-stage">
         <div className={`pet-speech ${rewardNotice ? "pet-speech--reward" : ""}`} aria-live="polite">
           {rewardNotice ?? (expanded ? "陪你把这一件事做完" : "点我，开始今天")}
         </div>
@@ -459,7 +464,7 @@ export function App(): React.JSX.Element {
           onStateChange={setPetState}
           onTap={() => setExpanded((value) => !value)}
         />
-      </div>
+      </div>}
     </main>
   );
 }

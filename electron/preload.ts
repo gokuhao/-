@@ -50,7 +50,8 @@ contextBridge.exposeInMainWorld("stepBeast", {
     moveDrag: (screenX: number, screenY: number) =>
       ipcRenderer.send("pet-window:drag-move", { screenX, screenY }),
     endDrag: () => ipcRenderer.send("pet-window:drag-end"),
-    setExpanded: (expanded: boolean) => ipcRenderer.send("pet-window:set-expanded", expanded),
+    setExpanded: (expanded: boolean, mode: "panel" | "workbench" = "panel") =>
+      ipcRenderer.send("pet-window:set-expanded", expanded, mode),
     close: () => ipcRenderer.send("pet-window:close"),
   },
   tasks: {

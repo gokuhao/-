@@ -282,8 +282,8 @@ export function ActionPanel({
     <section className={`action-panel apple-action-panel ${focusActive || focusPaused ? "apple-action-panel--focus" : ""}`} aria-label="步步兽行动面板">
       <header className="apple-panel-header">
         <div>
-          <p className="apple-date"><span className="apple-ready-dot" />{todayLabel}</p>
-          <p className="apple-greeting">{greeting}，小徐</p>
+          <p className="apple-date"><span className="apple-ready-dot" />步步兽 · 今日 · {todayLabel}</p>
+          <p className="apple-greeting">{greeting}，小昊</p>
         </div>
         <div className="apple-header-actions">
           <span className="apple-mini-pet" aria-hidden="true" />
@@ -352,7 +352,7 @@ export function ActionPanel({
       <nav className="apple-bottom-nav" aria-label="主要功能">
         <button className="apple-bottom-nav--active" type="button"><span>◉</span>今日</button>
         <button type="button" onClick={() => onOpenTool("chat")}><span>○</span>对话</button>
-        <button type="button" onClick={() => onOpenTool("more")}><span>•••</span>更多</button>
+        <button type="button" onClick={() => onOpenTool("more")}><span>▣</span>工作台</button>
       </nav>
 
       {decompositionProposal && (

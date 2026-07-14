@@ -12,7 +12,8 @@ import { RuntimeCoordinator } from "./runtimeCoordinator.js";
 import { SystemRepository } from "./systemRepository.js";
 
 const COLLAPSED_SIZE = { width: 240, height: 260 };
-const EXPANDED_SIZE = { width: 380, height: 620 };
+const PANEL_SIZE = { width: 430, height: 720 };
+const WORKBENCH_SIZE = { width: 900, height: 720 };
 
 type SavedWindowState = { x: number; y: number };
 type DragSession = { offsetX: number; offsetY: number };
@@ -131,12 +132,16 @@ ipcMain.on("pet-window:drag-end", (event) => {
   saveWindowState(window);
 });
 
-ipcMain.on("pet-window:set-expanded", (event, expanded: boolean) => {
+ipcMain.on("pet-window:set-expanded", (event, expanded: boolean, mode: "panel" | "workbench" = "panel") => {
   const window = senderWindow(event);
   if (!window) return;
   const current = window.getBounds();
-  const next = expanded ? EXPANDED_SIZE : COLLAPSED_SIZE;
   const workArea = screen.getDisplayMatching(current).workArea;
+  const requested = expanded ? mode === "workbench" ? WORKBENCH_SIZE : PANEL_SIZE : COLLAPSED_SIZE;
+  const next = {
+    width: Math.min(requested.width, workArea.width),
+    height: Math.min(requested.height, workArea.height),
+  };
   const proposedX = Math.round(current.x - (next.width - current.width) / 2);
   const proposedY = current.y - (next.height - current.height);
   window.setBounds({
