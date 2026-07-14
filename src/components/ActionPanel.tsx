@@ -6,7 +6,6 @@ type ActionPanelProps = {
   taskRoles: Partial<Record<string, StepBeastPlanRole>>;
   activeTask: StepBeastTask | null;
   taskError: string | null;
-  petProfile: StepBeastPetProfile | null;
   hermesStatus: StepBeastHermesStatus | null;
   hermesChecking: boolean;
   obsidianStatus: StepBeastObsidianStatus | null;
@@ -40,9 +39,8 @@ type ActionPanelProps = {
   onGenerateDailyPlan: () => void;
   onConfirmDailyPlan: () => void;
   onCancelDailyPlan: () => void;
-  onOpenTool: (tool: "chat" | "projects" | "review" | "coo" | "settings") => void;
+  onOpenTool: (tool: "chat" | "more") => void;
   onClose: () => void;
-  onQuit: () => void;
 };
 
 function formatTime(totalSeconds: number): string {
@@ -56,7 +54,6 @@ export function ActionPanel({
   taskRoles,
   activeTask,
   taskError,
-  petProfile,
   hermesStatus,
   hermesChecking,
   obsidianStatus,
@@ -92,7 +89,6 @@ export function ActionPanel({
   onCancelDailyPlan,
   onOpenTool,
   onClose,
-  onQuit,
 }: ActionPanelProps): React.JSX.Element {
   const [addingTask, setAddingTask] = useState(false);
   const [title, setTitle] = useState("");
@@ -103,17 +99,24 @@ export function ActionPanel({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [changingRoleId, setChangingRoleId] = useState<string | null>(null);
+  const [managingTasks, setManagingTasks] = useState(false);
   const [selectedProjectTasks, setSelectedProjectTasks] = useState<string[]>([]);
   const mainCount = Object.values(taskRoles).filter((role) => role === "main").length;
   const supportCount = Object.values(taskRoles).filter((role) => role === "support").length;
-  const level = petProfile?.level ?? 1;
-  const totalXp = petProfile?.totalXp ?? 0;
-  const currentLevelXp = (100 * (level - 1) * level) / 2;
-  const nextLevelXp = (100 * level * (level + 1)) / 2;
-  const levelProgress = Math.min(100, ((totalXp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100);
   const displayedTasks = [...tasks]
-    .sort((left, right) => roleRank(taskRoles[left.id]) - roleRank(taskRoles[right.id]))
-    .slice(0, 3);
+    .sort((left, right) => roleRank(taskRoles[left.id]) - roleRank(taskRoles[right.id]));
+  const nextTask = displayedTasks.find((task) => isActiveTask(task) && task.id !== activeTask?.id) ?? null;
+  const plannedSeconds = Math.max(60, Math.min(activeTask?.estimatedMinutes ?? 25, 240) * 60);
+  const focusRatio = Math.max(0, Math.min(1, remainingSeconds / plannedSeconds));
+  const ringCircumference = 2 * Math.PI * 54;
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 11 ? "早上好" : hour < 14 ? "中午好" : hour < 18 ? "下午好" : "晚上好";
+  const todayLabel = new Intl.DateTimeFormat("zh-CN", {
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  }).format(now);
 
   useEffect(() => {
     setSelectedProjectTasks([]);
@@ -187,59 +190,23 @@ export function ActionPanel({
     }
   }
 
-  return (
-    <section className="action-panel" aria-label="步步兽行动面板">
-      <header className="panel-header">
-        <div>
-          <p className="panel-kicker">{activeTask && taskRoles[activeTask.id] === "main" ? "今日主线" : "今天只推进一件事"}</p>
-          <h1>{activeTask?.title ?? "先添加今天最重要的任务"}</h1>
-        </div>
-        <div className="panel-actions">
-          <button className="icon-button" type="button" onClick={() => setAddingTask((value) => !value)} aria-label="添加任务">＋</button>
-          <button className="icon-button" type="button" onClick={onClose} aria-label="收起面板">×</button>
-        </div>
-      </header>
-
-      {addingTask ? (
+  const taskManager = managingTasks && (
+    <div className="apple-task-manager" aria-label="任务管理">
+      <div className="apple-section-heading">
+        <span>任务管理</span>
+        <button type="button" onClick={() => setAddingTask((value) => !value)}>＋ 添加</button>
+      </div>
+      {addingTask && (
         <form className="task-form" onSubmit={submitTask}>
           <label htmlFor="new-task-title">任务名称</label>
           <div>
-            <input
-              id="new-task-title"
-              value={title}
-              maxLength={120}
-              autoFocus
-              placeholder="例如：完成视频脚本初稿"
-              onChange={(event) => setTitle(event.target.value)}
-            />
+            <input id="new-task-title" value={title} maxLength={120} autoFocus placeholder="例如：完成视频脚本初稿" onChange={(event) => setTitle(event.target.value)} />
             <button type="submit" disabled={!title.trim() || saving}>{saving ? "保存中" : "添加"}</button>
           </div>
         </form>
-      ) : (
-        <div className="next-action">
-          <span>下一步</span>
-          <strong>{activeTask?.nextAction ?? (activeTask ? "开始一个 25 分钟专注" : "点击右上角＋创建任务")}</strong>
-        </div>
       )}
-
-      {taskError && <p className="task-error" role="alert">{taskError}</p>}
-
-      <div className="plan-status" aria-label="今日计划状态">
-        <span>主线 {mainCount}/1</span>
-        <span>辅助 {supportCount}/2</span>
-        <button
-          type="button"
-          disabled={hermesStatus?.state !== "ready" || generatingDailyPlan || !tasks.some(isActiveTask)}
-          onClick={onGenerateDailyPlan}
-        >
-          {generatingDailyPlan ? "AI 规划中…" : "AI 排今日计划"}
-        </button>
-      </div>
-
-      <div className="task-list" aria-label="任务清单">
-        {tasks.length === 0 ? (
-          <p className="task-empty">任务清单还是空的。</p>
-        ) : displayedTasks.map((task) => editingId === task.id ? (
+      <div className="task-list">
+        {tasks.length === 0 ? <p className="task-empty">任务清单还是空的。</p> : displayedTasks.map((task) => editingId === task.id ? (
           <form className="task-edit-form" key={task.id} onSubmit={(event) => void submitTaskEdit(event, task.id)}>
             <input
               value={editingTitle}
@@ -308,59 +275,85 @@ export function ActionPanel({
           </div>
         ))}
       </div>
+    </div>
+  );
 
-      <div className="focus-row">
+  return (
+    <section className={`action-panel apple-action-panel ${focusActive || focusPaused ? "apple-action-panel--focus" : ""}`} aria-label="步步兽行动面板">
+      <header className="apple-panel-header">
         <div>
-          <span className="focus-label">{focusActive ? "专注进行中" : focusPaused ? "专注已暂停" : "25 分钟专注"}</span>
-          <strong className="timer">{formatTime(remainingSeconds)}</strong>
+          <p className="apple-date"><span className="apple-ready-dot" />{todayLabel}</p>
+          <p className="apple-greeting">{greeting}，小徐</p>
         </div>
-        <button className="primary-button" type="button" onClick={onToggleFocus} disabled={!activeTask}>
-          {focusActive ? "暂停" : focusPaused ? "继续" : "开始"}
-        </button>
-      </div>
+        <div className="apple-header-actions">
+          <span className="apple-mini-pet" aria-hidden="true" />
+          <button className="icon-button" type="button" onClick={onClose} aria-label="收起面板">×</button>
+        </div>
+      </header>
 
-      <div className="service-statuses">
-        <button
-          className={`hermes-status hermes-status--${hermesStatus?.state ?? "offline"}`}
-          type="button"
-          onClick={onRetryHermes}
-          disabled={hermesChecking}
-          title={hermesStatus?.baseUrl}
-          aria-label="重新检查 Hermes 连接"
-        >
-          <span className="hermes-dot" />
-          <span>{hermesChecking ? "检查 Hermes" : hermesStatus?.message ?? "Hermes 状态未知"}</span>
-        </button>
-        <button
-          className={`hermes-status obsidian-status--${obsidianStatus?.state ?? "unavailable"}`}
-          type="button"
-          onClick={obsidianStatus?.state === "ready" ? onProposeProjectSync : onRetryObsidian}
-          disabled={obsidianChecking || projectSyncing}
-          title={obsidianStatus?.vaultPath ?? undefined}
-          aria-label={obsidianStatus?.state === "ready" ? "读取 Obsidian 项目提案" : "重新检查 Obsidian Vault"}
-        >
-          <span className="hermes-dot" />
-          <span>{projectSyncing ? "读取项目…" : obsidianChecking ? "索引 Obsidian" : obsidianStatus?.message ?? "Obsidian 状态未知"}</span>
-        </button>
-      </div>
+      {taskError && <p className="task-error" role="alert">{taskError}</p>}
 
-      <nav className="system-tools" aria-label="个人操作系统工具">
-        <button type="button" onClick={() => onOpenTool("chat")}>对话</button>
-        <button type="button" onClick={() => onOpenTool("projects")}>项目</button>
-        <button type="button" onClick={() => onOpenTool("review")}>复盘</button>
-        <button type="button" onClick={() => onOpenTool("coo")}>COO</button>
-        <button type="button" onClick={() => onOpenTool("settings")}>设置</button>
+      {focusActive || focusPaused ? (
+        <div className="apple-focus-view">
+          <div className="apple-focus-copy">
+            <span>{focusPaused ? "专注已暂停" : "正在专注"}</span>
+            <strong>{activeTask?.title ?? "当前任务"}</strong>
+          </div>
+          <div className="apple-focus-ring" aria-label={`剩余 ${formatTime(remainingSeconds)}`}>
+            <svg viewBox="0 0 128 128" aria-hidden="true">
+              <circle className="apple-ring-track" cx="64" cy="64" r="54" />
+              <circle className="apple-ring-value" cx="64" cy="64" r="54" style={{ strokeDasharray: ringCircumference, strokeDashoffset: ringCircumference * (1 - focusRatio) }} />
+            </svg>
+            <div><strong>{formatTime(remainingSeconds)}</strong><span>剩余时间</span></div>
+          </div>
+          <div className="apple-focus-controls">
+            <button type="button" onClick={onToggleFocus}>{focusActive ? "暂停" : "继续"}</button>
+            <button className="apple-primary-button" type="button" disabled={!activeTask || completingId === activeTask.id} onClick={() => activeTask && void completeTask(activeTask.id)}>完成任务</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="apple-main-task">
+            <div className="apple-task-meta"><span>今天最重要</span><span>{activeTask?.estimatedMinutes ?? 25} 分钟</span></div>
+            <h1>{activeTask?.title ?? "先添加今天最重要的任务"}</h1>
+            <p>{activeTask?.nextAction ?? (activeTask ? "从一个 25 分钟专注开始" : "创建任务后，步步兽会陪你开始行动。")}</p>
+            <div className="apple-main-actions">
+              <button className="apple-primary-button" type="button" onClick={onToggleFocus} disabled={!activeTask}>▶ 开始专注</button>
+              <button type="button" onClick={() => setManagingTasks((value) => !value)}>{managingTasks ? "收起任务" : "管理任务"}</button>
+            </div>
+          </div>
+
+          {!managingTasks && (
+            <div className="apple-next-section">
+              <div className="apple-section-heading">
+                <span>接下来</span>
+                <button type="button" disabled={hermesStatus?.state !== "ready" || generatingDailyPlan || !tasks.some(isActiveTask)} onClick={onGenerateDailyPlan}>{generatingDailyPlan ? "规划中…" : "AI 规划"}</button>
+              </div>
+              {nextTask ? (
+                <button className="apple-next-task" type="button" onClick={() => void setTaskRole(nextTask.id, taskRoles[nextTask.id] === "support" ? "" : "support")}>
+                  <span><strong>{nextTask.title}</strong><small>{taskRoles[nextTask.id] === "support" ? "今日辅助任务" : "任务池"} · {nextTask.estimatedMinutes ?? 25} 分钟</small></span>
+                  <span>›</span>
+                </button>
+              ) : <p className="apple-empty">暂时没有下一项任务。</p>}
+              <div className="apple-plan-count"><span>主线 {mainCount}/1</span><span>辅助 {supportCount}/2</span></div>
+            </div>
+          )}
+          {taskManager}
+        </>
+      )}
+
+      {(hermesStatus?.state !== "ready" || obsidianStatus?.state !== "ready") && (
+        <div className="apple-service-alerts">
+          {hermesStatus?.state !== "ready" && <button type="button" onClick={onRetryHermes} disabled={hermesChecking}>Hermes {hermesChecking ? "检查中" : "需要连接"}</button>}
+          {obsidianStatus?.state !== "ready" && <button type="button" onClick={onRetryObsidian} disabled={obsidianChecking}>Obsidian {obsidianChecking ? "检查中" : "需要连接"}</button>}
+        </div>
+      )}
+
+      <nav className="apple-bottom-nav" aria-label="主要功能">
+        <button className="apple-bottom-nav--active" type="button"><span>◉</span>今日</button>
+        <button type="button" onClick={() => onOpenTool("chat")}><span>○</span>对话</button>
+        <button type="button" onClick={() => onOpenTool("more")}><span>•••</span>更多</button>
       </nav>
-
-      <footer className="panel-footer">
-        <div className="growth-status">
-          <span>Lv.{level} · {totalXp} / {nextLevelXp} XP</span>
-          <span className="xp-track" aria-label={`等级进度 ${Math.round(levelProgress)}%`}>
-            <span style={{ width: `${levelProgress}%` }} />
-          </span>
-        </div>
-        <button type="button" onClick={onQuit}>退出步步兽</button>
-      </footer>
 
       {decompositionProposal && (
         <section className="proposal-overlay" aria-label="AI 任务拆解提案">

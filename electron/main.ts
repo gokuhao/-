@@ -136,9 +136,13 @@ ipcMain.on("pet-window:set-expanded", (event, expanded: boolean) => {
   if (!window) return;
   const current = window.getBounds();
   const next = expanded ? EXPANDED_SIZE : COLLAPSED_SIZE;
+  const workArea = screen.getDisplayMatching(current).workArea;
+  const proposedX = Math.round(current.x - (next.width - current.width) / 2);
+  const proposedY = current.y - (next.height - current.height);
   window.setBounds({
-    x: Math.round(current.x - (next.width - current.width) / 2),
-    y: current.y - (next.height - current.height),
+    // 展开尺寸更大，必须重新限制在当前显示器工作区内，避免面板被屏幕边缘裁掉。
+    x: Math.min(Math.max(proposedX, workArea.x), workArea.x + workArea.width - next.width),
+    y: Math.min(Math.max(proposedY, workArea.y), workArea.y + workArea.height - next.height),
     ...next,
   });
   saveWindowState(window);

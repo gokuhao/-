@@ -205,6 +205,123 @@ button { font: inherit; }
 .panel-footer button { padding: 0; border: 0; color: #849081; background: transparent; cursor: pointer; }
 .panel-footer button:hover { color: #d7ddd4; }
 
+/* Apple 风格主面板：通过更少入口、留白和独立专注状态降低信息噪音。 */
+.apple-action-panel {
+  width: 350px;
+  height: 360px;
+  margin-bottom: -4px;
+  padding: 21px;
+  overflow: hidden;
+  border: 1px solid #ffffff2e;
+  border-radius: 28px;
+  background: linear-gradient(145deg, #252827fa, #151716fc);
+  box-shadow: 0 24px 70px #0009, inset 0 1px #ffffff18;
+  backdrop-filter: blur(28px) saturate(145%);
+}
+.apple-action-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 88% 0%, #b5dcff14, transparent 36%);
+}
+.apple-action-panel > * { position: relative; }
+.apple-panel-header { display: flex; min-height: 60px; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.apple-date { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; color: #9baca1; font-size: 10px; }
+.apple-greeting { margin: 0; color: #f4f5f2; font-size: 16px; font-weight: 650; }
+.apple-ready-dot { width: 7px; height: 7px; border-radius: 50%; background: #81d96f; box-shadow: 0 0 0 3px #81d96f18; }
+.apple-header-actions { display: flex; align-items: flex-start; gap: 4px; }
+.apple-mini-pet {
+  display: block;
+  width: 58px;
+  height: 62px;
+  background-image: url("/pets/sprout-cat/spritesheet.webp");
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 800% 900%;
+  filter: drop-shadow(0 7px 9px #0005);
+}
+.apple-main-task { display: grid; gap: 9px; padding: 9px 0 16px 13px; border-left: 3px solid #84b9ed; }
+.apple-task-meta { display: flex; justify-content: space-between; color: #93a199; font-size: 10px; }
+.apple-main-task h1 { margin: 0; overflow: hidden; color: #f5f6f3; font-size: 18px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.apple-main-task p { margin: 0; overflow: hidden; color: #a6afa9; font-size: 11px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+.apple-main-actions { display: flex; gap: 8px; margin-top: 4px; }
+.apple-main-actions button, .apple-focus-controls button {
+  min-height: 32px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 11px;
+  color: #ced4d0;
+  background: #ffffff0d;
+  cursor: pointer;
+  font-size: 10px;
+}
+.apple-main-actions .apple-primary-button, .apple-focus-controls .apple-primary-button {
+  flex: 1;
+  color: #fff;
+  background: #0a84ff;
+  box-shadow: 0 7px 18px #0a84ff30;
+  font-weight: 700;
+}
+.apple-main-actions button:disabled, .apple-focus-controls button:disabled { cursor: default; opacity: .4; }
+.apple-next-section { display: grid; gap: 7px; padding-top: 13px; border-top: 1px solid #ffffff14; }
+.apple-section-heading { display: flex; align-items: center; justify-content: space-between; color: #bdc5c0; font-size: 11px; }
+.apple-section-heading button { padding: 3px 6px; border: 0; color: #91bde4; background: transparent; cursor: pointer; font-size: 9px; }
+.apple-next-task { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 9px; padding: 7px 0; border: 0; color: #e5e8e4; background: transparent; cursor: pointer; text-align: left; }
+.apple-next-task > span:first-child { display: grid; min-width: 0; gap: 3px; }
+.apple-next-task strong { overflow: hidden; font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.apple-next-task small, .apple-plan-count { color: #7f8a83; font-size: 9px; }
+.apple-next-task > span:last-child { color: #77817b; font-size: 20px; }
+.apple-plan-count { display: flex; gap: 10px; }
+.apple-empty { margin: 4px 0; color: #7f8a83; font-size: 10px; }
+.apple-task-manager { min-height: 0; padding-top: 12px; border-top: 1px solid #ffffff14; }
+.apple-task-manager .task-form { margin: 7px 0; }
+.apple-task-manager .task-list { max-height: 142px; margin-top: 7px; }
+.apple-task-manager .task-item { min-height: 28px; padding-block: 4px; }
+.apple-focus-view { display: grid; justify-items: center; gap: 13px; padding-top: 3px; }
+.apple-focus-copy { display: grid; justify-items: center; gap: 4px; max-width: 280px; text-align: center; }
+.apple-focus-copy span { color: #92a099; font-size: 10px; }
+.apple-focus-copy strong { overflow: hidden; max-width: 100%; color: #f1f3ef; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.apple-focus-ring { position: relative; display: grid; width: 132px; height: 132px; place-items: center; }
+.apple-focus-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.apple-focus-ring circle { fill: none; stroke-width: 6; }
+.apple-ring-track { stroke: #ffffff12; }
+.apple-ring-value { stroke: #0a84ff; stroke-linecap: round; transition: stroke-dashoffset .4s linear; }
+.apple-focus-ring > div { display: grid; justify-items: center; gap: 2px; }
+.apple-focus-ring strong { color: #f5f6f3; font-size: 24px; letter-spacing: .03em; }
+.apple-focus-ring span { color: #7f8a84; font-size: 9px; }
+.apple-focus-controls { display: flex; width: 100%; justify-content: center; gap: 8px; }
+.apple-service-alerts { display: flex; gap: 6px; margin-top: 7px; }
+.apple-service-alerts button { padding: 4px 7px; border: 1px solid #d29b7630; border-radius: 8px; color: #d8ab8d; background: #d29b760d; cursor: pointer; font-size: 8px; }
+.apple-bottom-nav { position: absolute; right: 21px; bottom: 15px; left: 21px; display: grid; grid-template-columns: repeat(3, 1fr); padding-top: 10px; border-top: 1px solid #ffffff14; }
+.apple-bottom-nav button { display: grid; justify-items: center; gap: 3px; padding: 3px; border: 0; color: #747e78; background: transparent; cursor: pointer; font-size: 9px; }
+.apple-bottom-nav button > span { min-height: 11px; font-size: 10px; letter-spacing: .06em; }
+.apple-bottom-nav .apple-bottom-nav--active { color: #b5d9fa; }
+
+.apple-system-overlay { background: #1b1e1dfb; backdrop-filter: blur(28px) saturate(135%); }
+.apple-system-overlay .tool-body { scrollbar-width: thin; scrollbar-color: #ffffff2e transparent; }
+.apple-system-overlay .tool-body::-webkit-scrollbar { width: 5px; }
+.apple-system-overlay .tool-body::-webkit-scrollbar-track { background: transparent; }
+.apple-system-overlay .tool-body::-webkit-scrollbar-thumb { border-radius: 999px; background: #ffffff2e; }
+.apple-overlay-title { display: flex; align-items: flex-start; gap: 8px; }
+.apple-overlay-title > button { width: 28px; height: 28px; border: 0; border-radius: 50%; color: #d3d8d4; background: #ffffff0d; cursor: pointer; font-size: 20px; }
+.apple-more-tool { display: grid; gap: 12px; }
+.apple-profile-summary { display: flex; align-items: center; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid #ffffff14; }
+.apple-profile-summary .apple-mini-pet { width: 45px; height: 49px; }
+.apple-profile-summary > div { display: grid; gap: 3px; }
+.apple-profile-summary strong { color: #f0f2ef; font-size: 12px; }
+.apple-profile-summary small { color: #7f8983; font-size: 9px; }
+.apple-more-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.apple-more-grid button { display: grid; min-height: 70px; gap: 3px; padding: 9px; border: 1px solid #ffffff10; border-radius: 13px; color: #dce1dd; background: #ffffff08; cursor: pointer; text-align: left; }
+.apple-more-grid button > span { color: #9ecbf1; }
+.apple-more-grid strong { font-size: 11px; }
+.apple-more-grid small { color: #78827c; font-size: 8px; }
+.apple-connection-list { display: grid; gap: 4px; }
+.apple-connection-list button { display: grid; grid-template-columns: auto 58px 1fr; align-items: center; gap: 6px; padding: 6px 8px; border: 0; border-radius: 9px; color: #b7c0ba; background: #ffffff06; cursor: pointer; text-align: left; font-size: 9px; }
+.apple-connection-list small { overflow: hidden; color: #6f7a73; text-overflow: ellipsis; white-space: nowrap; }
+.apple-connection-list .apple-dot--ready { background: #84d873; box-shadow: 0 0 0 3px #84d87320; }
+.apple-quit-button { justify-self: center; padding: 4px 8px; border: 0; color: #77817b; background: transparent; cursor: pointer; font-size: 9px; }
+
 @keyframes panel-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {

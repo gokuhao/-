@@ -3,7 +3,6 @@ import { ActionPanel } from "./components/ActionPanel";
 import { SystemOverlay, type SystemTool } from "./components/SystemOverlay";
 import { PetAvatar } from "./pet/PetAvatar";
 import type { PetState } from "./pet/petMachine";
-import { PET_STATE_LABELS } from "./pet/petMachine";
 
 const FOCUS_SECONDS = 25 * 60;
 
@@ -387,7 +386,6 @@ export function App(): React.JSX.Element {
           taskRoles={taskRoles}
           activeTask={activeTask}
           taskError={taskError}
-          petProfile={petProfile}
           hermesStatus={hermesStatus}
           hermesChecking={hermesChecking}
           obsidianStatus={obsidianStatus}
@@ -432,7 +430,6 @@ export function App(): React.JSX.Element {
           }}
           onOpenTool={setActiveTool}
           onClose={() => setExpanded(false)}
-          onQuit={() => window.stepBeast?.window.close()}
         />
       )}
 
@@ -440,6 +437,14 @@ export function App(): React.JSX.Element {
         <SystemOverlay
           tool={activeTool}
           tasks={tasks}
+          petProfile={petProfile}
+          hermesStatus={hermesStatus}
+          obsidianStatus={obsidianStatus}
+          projectSyncing={projectSyncing}
+          onRetryHermes={() => void refreshHermesStatus()}
+          onRetryObsidian={() => void refreshObsidianStatus()}
+          onProposeProjectSync={() => void proposeProjectSync()}
+          onQuit={() => window.stepBeast?.window.close()}
           onClose={() => setActiveTool(null)}
           onNotice={setRewardNotice}
         />
@@ -447,7 +452,7 @@ export function App(): React.JSX.Element {
 
       <div className="pet-stage">
         <div className={`pet-speech ${rewardNotice ? "pet-speech--reward" : ""}`} aria-live="polite">
-          {rewardNotice ?? (expanded ? PET_STATE_LABELS[petState] : "点我，开始今天")}
+          {rewardNotice ?? (expanded ? "陪你把这一件事做完" : "点我，开始今天")}
         </div>
         <PetAvatar
           state={petState}
