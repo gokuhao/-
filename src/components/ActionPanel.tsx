@@ -40,6 +40,7 @@ type ActionPanelProps = {
   onGenerateDailyPlan: () => void;
   onConfirmDailyPlan: () => void;
   onCancelDailyPlan: () => void;
+  onOpenTool: (tool: "chat" | "projects" | "review" | "coo" | "settings") => void;
   onClose: () => void;
   onQuit: () => void;
 };
@@ -89,6 +90,7 @@ export function ActionPanel({
   onGenerateDailyPlan,
   onConfirmDailyPlan,
   onCancelDailyPlan,
+  onOpenTool,
   onClose,
   onQuit,
 }: ActionPanelProps): React.JSX.Element {
@@ -341,6 +343,14 @@ export function ActionPanel({
           <span>{projectSyncing ? "读取项目…" : obsidianChecking ? "索引 Obsidian" : obsidianStatus?.message ?? "Obsidian 状态未知"}</span>
         </button>
       </div>
+
+      <nav className="system-tools" aria-label="个人操作系统工具">
+        <button type="button" onClick={() => onOpenTool("chat")}>对话</button>
+        <button type="button" onClick={() => onOpenTool("projects")}>项目</button>
+        <button type="button" onClick={() => onOpenTool("review")}>复盘</button>
+        <button type="button" onClick={() => onOpenTool("coo")}>COO</button>
+        <button type="button" onClick={() => onOpenTool("settings")}>设置</button>
+      </nav>
 
       <footer className="panel-footer">
         <div className="growth-status">

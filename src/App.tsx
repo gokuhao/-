@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActionPanel } from "./components/ActionPanel";
+import { SystemOverlay, type SystemTool } from "./components/SystemOverlay";
 import { PetAvatar } from "./pet/PetAvatar";
 import type { PetState } from "./pet/petMachine";
 import { PET_STATE_LABELS } from "./pet/petMachine";
@@ -29,6 +30,7 @@ export function App(): React.JSX.Element {
   const [projectProposal, setProjectProposal] = useState<StepBeastObsidianProjectProposal | null>(null);
   const [projectSyncing, setProjectSyncing] = useState(false);
   const [projectConfirming, setProjectConfirming] = useState(false);
+  const [activeTool, setActiveTool] = useState<SystemTool | null>(null);
 
   const taskRoles = Object.fromEntries(
     (todayPlan?.items ?? []).map((item) => [item.task.id, item.role]),
@@ -70,6 +72,13 @@ export function App(): React.JSX.Element {
 
   useEffect(() => {
     void refreshObsidianStatus();
+  }, []);
+
+  useEffect(() => {
+    return window.stepBeast?.runtime?.onReminder((message) => {
+      setRewardNotice(message);
+      setExpanded(true);
+    });
   }, []);
 
   useEffect(() => {
@@ -421,8 +430,18 @@ export function App(): React.JSX.Element {
             setDailyPlanProposal(null);
             setPetState("idle");
           }}
+          onOpenTool={setActiveTool}
           onClose={() => setExpanded(false)}
           onQuit={() => window.stepBeast?.window.close()}
+        />
+      )}
+
+      {expanded && activeTool && (
+        <SystemOverlay
+          tool={activeTool}
+          tasks={tasks}
+          onClose={() => setActiveTool(null)}
+          onNotice={setRewardNotice}
         />
       )}
 

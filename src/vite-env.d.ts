@@ -60,6 +60,21 @@ interface Window {
         selectedCandidateKeys: string[],
       ) => Promise<StepBeastProjectSyncResult>;
     };
+    settings: {
+      get: () => Promise<StepBeastSettings>;
+      update: (input: StepBeastSettings) => Promise<StepBeastSettings>;
+    };
+    activity: {
+      getSummary: (days?: number) => Promise<StepBeastUsageSummary>;
+    };
+    reviews: {
+      propose: () => Promise<StepBeastDailyReviewProposal>;
+      confirm: (proposalId: string) => Promise<{ review: StepBeastReview; writeResult: { relativePath: string; created: boolean } }>;
+      list: () => Promise<StepBeastReview[]>;
+    };
+    chat: { send: (message: string) => Promise<string> };
+    coo: { analyze: () => Promise<StepBeastCooAnalysis> };
+    runtime: { onReminder: (callback: (message: string) => void) => () => void };
   };
 }
 
@@ -111,6 +126,7 @@ type StepBeastTodayPlan = {
 type StepBeastTask = {
   id: string;
   parentTaskId: string | null;
+  projectId: string | null;
   title: string;
   status: "todo" | "doing" | "completed" | "cancelled";
   estimatedMinutes: number | null;
@@ -223,4 +239,46 @@ type StepBeastProject = {
 type StepBeastProjectSyncResult = {
   projects: StepBeastProject[];
   createdTaskIds: string[];
+};
+
+type StepBeastSettings = {
+  morningReminderEnabled: boolean;
+  morningTime: string;
+  eveningReminderEnabled: boolean;
+  eveningTime: string;
+  activityTrackingEnabled: boolean;
+  autoLaunch: boolean;
+  activeMode: 2 | 3 | 4;
+};
+
+type StepBeastUsageSummary = {
+  dateFrom: string;
+  dateTo: string;
+  totalSeconds: number;
+  byCategory: Record<"work" | "learning" | "communication" | "entertainment" | "other", number>;
+  topApps: Array<{ appName: string; category: string; seconds: number }>;
+};
+
+type StepBeastDailyReviewProposal = {
+  proposalId: string;
+  reviewDate: string;
+  targetPath: string;
+  summary: string;
+  content: string;
+  attempts: number;
+};
+
+type StepBeastReview = {
+  id: string;
+  reviewDate: string;
+  targetPath: string;
+  summary: string;
+  createdAt: string;
+};
+
+type StepBeastCooAnalysis = {
+  summary: string;
+  risks: string[];
+  suggestions: string[];
+  attempts: number;
 };

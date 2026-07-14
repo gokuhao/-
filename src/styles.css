@@ -137,6 +137,9 @@ button { font: inherit; }
 .hermes-status--misconfigured .hermes-dot { background: #e38a77; box-shadow: 0 0 0 3px #e38a7724; }
 .service-statuses { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; }
 .service-statuses .hermes-status { min-width: 0; margin-top: 0; }
+.system-tools { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 8px; }
+.system-tools button { padding: 6px 2px; border: 0; border-radius: 8px; color: #b7c4b3; background: #ffffff0a; cursor: pointer; font-size: 9px; }
+.system-tools button:hover { color: #ecf5e8; background: #ffffff14; }
 .obsidian-status--ready .hermes-dot { background: #a88bea; box-shadow: 0 0 0 3px #a88bea24; }
 .obsidian-status--invalid .hermes-dot, .obsidian-status--unavailable .hermes-dot { background: #e38a77; box-shadow: 0 0 0 3px #e38a7724; }
 .panel-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 17px; color: #849081; font-size: 11px; }
@@ -155,6 +158,34 @@ button { font: inherit; }
 .proposal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: auto; }
 .proposal-actions button { padding: 8px 10px; border: 0; border-radius: 9px; color: #b8c3b5; background: #ffffff10; cursor: pointer; font-size: 10px; }
 .proposal-actions button:last-child { color: #1d2b1e; background: #bfe49e; font-weight: 700; }
+.system-overlay { inset: 16px 15px 258px; min-height: 346px; }
+.system-overlay-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.system-overlay-header h2 { margin: 0; }
+.system-overlay-header > button { width: 28px; height: 28px; border: 0; border-radius: 50%; color: #bec8bb; background: #ffffff10; cursor: pointer; }
+.tool-body { min-height: 0; margin-top: 12px; overflow-y: auto; color: #aeb9ab; font-size: 11px; line-height: 1.55; }
+.tool-empty { padding: 12px; border-radius: 10px; background: #ffffff08; color: #879685; }
+.tool-primary { padding: 9px 12px; border: 0; border-radius: 9px; color: #1d2b1e; background: #bfe49e; cursor: pointer; font-weight: 700; }
+.tool-primary:disabled { opacity: .45; }
+.chat-tool { display: flex; flex: 1; flex-direction: column; }
+.chat-messages { display: grid; gap: 7px; min-height: 190px; max-height: 225px; overflow-y: auto; }
+.chat-message { margin: 0; padding: 8px 10px; border-radius: 10px; white-space: pre-wrap; user-select: text; }
+.chat-message--user { margin-left: 28px; background: #83ac652b; }
+.chat-message--assistant { margin-right: 18px; background: #ffffff0a; }
+.chat-tool form { display: flex; gap: 6px; margin-top: 8px; }
+.chat-tool input, .project-tool select, .settings-tool input, .settings-tool select { min-width: 0; padding: 7px 8px; border: 1px solid #ffffff1d; border-radius: 8px; color: #edf3e9; background: #101611; }
+.chat-tool input { flex: 1; }
+.chat-tool form button { border: 0; border-radius: 8px; color: #1d2b1e; background: #bfe49e; font-weight: 700; }
+.project-tool select { width: 100%; }
+.project-tool article, .coo-tool article { margin-top: 9px; padding: 10px; border-radius: 10px; background: #ffffff08; }
+.project-tool h3, .project-tool h4, .coo-tool h3, .coo-tool h4 { margin: 7px 0 4px; color: #e2eadd; }
+.project-tool p, .coo-tool p { margin: 4px 0; }
+.tool-badge { color: #a8cb93; font-size: 9px; }
+.tool-path { color: #a8cb93; word-break: break-all; }
+.review-tool pre { max-height: 205px; margin: 7px 0; padding: 9px; overflow: auto; border-radius: 9px; color: #d6dfd2; background: #0e130f; font: 10px/1.5 Consolas, monospace; white-space: pre-wrap; user-select: text; }
+.settings-tool { display: grid; gap: 8px; }
+.settings-tool > label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.setting-toggle input { accent-color: #a8cb93; }
+.settings-tool small { color: #7f8d7d; }
 .proposal-reasoning { margin: 8px 0 0; color: #9baa98; font-size: 10px; line-height: 1.5; }
 .daily-plan-proposal ol { list-style: none; padding-left: 0; }
 .project-sync-scroll { min-width: 0; min-height: 0; margin: 12px 0; overflow-x: hidden; overflow-y: auto; }
