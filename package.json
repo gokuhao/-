@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "步步兽 Windows 本地 AI 桌面宠物",
+  "author": "StepBeast",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k \"vite\" \"npm:dev:electron\"",
@@ -12,22 +13,49 @@
     "test:daily-plan": "npm run build && node scripts/test-daily-plan.mjs",
     "test:obsidian": "npm run build && node scripts/test-obsidian-reader.mjs",
     "test:obsidian-projects": "npm run build && node scripts/test-obsidian-projects.mjs",
-    "test:project-sync": "npm run build && node scripts/test-project-sync.mjs"
+    "test:project-sync": "npm run build && node scripts/test-project-sync.mjs",
+    "test:system": "npm run build && node scripts/test-system-repository.mjs && node scripts/test-obsidian-writer.mjs && node scripts/test-hermes-advanced.mjs",
+    "test:all": "npm run build && node scripts/test-daily-plan.mjs && node scripts/test-obsidian-reader.mjs && node scripts/test-obsidian-projects.mjs && node scripts/test-project-sync.mjs && node scripts/test-system-repository.mjs && node scripts/test-obsidian-writer.mjs && node scripts/test-hermes-advanced.mjs",
+    "dist:win": "npm run build && electron-builder --win nsis --x64"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "vite": "latest",
-    "typescript": "latest",
+    "get-windows": "^9.3.0",
     "react": "latest",
     "react-dom": "latest"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "latest",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "concurrently": "latest",
     "cross-env": "latest",
     "electron": "latest",
+    "electron-builder": "^26.15.3",
+    "typescript": "latest",
+    "vite": "latest",
     "wait-on": "latest"
+  },
+  "overrides": {
+    "tar": "7.5.20"
+  },
+  "build": {
+    "appId": "com.stepbeast.desktop",
+    "productName": "步步兽",
+    "npmRebuild": false,
+    "directories": { "output": "release" },
+    "files": ["dist/**/*", "dist-electron/**/*", "package.json"],
+    "asarUnpack": ["node_modules/get-windows/lib/binding/**/*"],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "artifactName": "StepBeast-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "步步兽"
+    }
   }
 }

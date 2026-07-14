@@ -7,4 +7,6 @@ dist-electron/
 *.db-wal
 npm-debug.log*
 dev.*.log
+release/
+artifacts/
 .DS_Store

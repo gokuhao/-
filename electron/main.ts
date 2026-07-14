@@ -2,11 +2,14 @@ import { app, BrowserWindow, ipcMain, screen } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { FocusRepository } from "./focusRepository.js";
-import { HermesClient } from "./hermesClient.js";
+import { HermesClient, type DailyReviewProposal } from "./hermesClient.js";
 import { ObsidianReader } from "./obsidianReader.js";
+import { ObsidianWriter } from "./obsidianWriter.js";
 import { ObsidianProjectService } from "./obsidianProjectService.js";
 import { ProjectRepository } from "./projectRepository.js";
 import { TaskRepository } from "./taskRepository.js";
+import { RuntimeCoordinator } from "./runtimeCoordinator.js";
+import { SystemRepository } from "./systemRepository.js";
 
 const COLLAPSED_SIZE = { width: 240, height: 260 };
 const EXPANDED_SIZE = { width: 380, height: 620 };
@@ -21,6 +24,11 @@ let hermesClient: HermesClient | null = null;
 let obsidianReader: ObsidianReader | null = null;
 let obsidianProjectService: ObsidianProjectService | null = null;
 let projectRepository: ProjectRepository | null = null;
+let systemRepository: SystemRepository | null = null;
+let obsidianWriter: ObsidianWriter | null = null;
+let runtimeCoordinator: RuntimeCoordinator | null = null;
+let mainWindow: BrowserWindow | null = null;
+const pendingReviews = new Map<string, DailyReviewProposal>();
 
 function getWindowStatePath(): string {
   return path.join(app.getPath("userData"), "window-state.json");
@@ -62,7 +70,7 @@ function getInitialPosition(): SavedWindowState {
 
 function createMainWindow(): void {
   const position = getInitialPosition();
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     ...COLLAPSED_SIZE,
     ...position,
     title: "步步兽",
@@ -82,6 +90,7 @@ function createMainWindow(): void {
   });
 
   mainWindow.setAlwaysOnTop(true, "floating");
+  mainWindow.on("closed", () => { mainWindow = null; });
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
   if (devServerUrl) {
@@ -236,6 +245,85 @@ ipcMain.handle("project:confirm-sync", (event, proposal, selectedCandidateKeys: 
   return projectRepository.confirmSync({ proposal, selectedCandidateKeys });
 });
 
+ipcMain.handle("settings:get", (event) => {
+  if (!senderWindow(event) || !systemRepository) throw new Error("设置系统尚未准备好");
+  return systemRepository.getSettings();
+});
+
+ipcMain.handle("settings:update", (event, input) => {
+  if (!senderWindow(event) || !systemRepository) throw new Error("设置系统尚未准备好");
+  const settings = systemRepository.updateSettings(input);
+  // 开发模式不写 Windows 开机启动项，避免调试版本污染系统设置。
+  if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: settings.autoLaunch });
+  return settings;
+});
+
+ipcMain.handle("activity:get-summary", (event, days: number) => {
+  if (!senderWindow(event) || !systemRepository) throw new Error("活动统计尚未准备好");
+  return systemRepository.getUsageSummary(days);
+});
+
+ipcMain.handle("review:propose", async (event) => {
+  if (!senderWindow(event) || !systemRepository || !hermesClient) throw new Error("每日复盘尚未准备好");
+  const proposal = await hermesClient.generateDailyReview(systemRepository.getDailyFacts());
+  pendingReviews.set(proposal.proposalId, proposal);
+  return proposal;
+});
+
+ipcMain.handle("review:confirm", async (event, proposalId: string) => {
+  if (!senderWindow(event) || !systemRepository || !obsidianWriter) throw new Error("每日复盘尚未准备好");
+  const proposal = pendingReviews.get(proposalId);
+  if (!proposal) throw new Error("复盘提案已失效，请重新生成并预览");
+  const writeResult = await obsidianWriter.writeNewMarkdown(proposal.targetPath, proposal.content);
+  const review = systemRepository.confirmReview({
+    proposalId: proposal.proposalId,
+    reviewDate: proposal.reviewDate,
+    targetPath: proposal.targetPath,
+    summary: proposal.summary,
+  });
+  pendingReviews.delete(proposalId);
+  return { review, writeResult };
+});
+
+ipcMain.handle("review:list", (event) => {
+  if (!senderWindow(event) || !systemRepository) throw new Error("每日复盘尚未准备好");
+  return systemRepository.listReviews();
+});
+
+ipcMain.handle("chat:send", (event, message: string) => {
+  if (!senderWindow(event) || !hermesClient || !taskRepository || !projectRepository || !systemRepository) {
+    throw new Error("步步兽对话尚未准备好");
+  }
+  const tasks = taskRepository.list().filter((task) => task.status === "todo" || task.status === "doing").slice(0, 20);
+  const projects = projectRepository.list().slice(0, 15);
+  return hermesClient.chat(message, {
+    activeTasks: tasks.map((task) => ({ title: task.title, status: task.status })),
+    projects: projects.map((project) => ({ name: project.name, status: project.status, currentStage: project.currentStage })),
+    recentReview: systemRepository.listReviews(1)[0]?.summary ?? null,
+  });
+});
+
+ipcMain.handle("coo:analyze", (event) => {
+  if (!senderWindow(event) || !hermesClient || !taskRepository || !projectRepository || !systemRepository) {
+    throw new Error("AI COO 尚未准备好");
+  }
+  const tasks = taskRepository.list();
+  const facts = systemRepository.getDailyFacts();
+  const usage = systemRepository.getUsageSummary(7);
+  return hermesClient.analyzeCoo({
+    completedTaskCount: tasks.filter((task) => task.status === "completed").length,
+    unfinishedTaskCount: tasks.filter((task) => task.status === "todo" || task.status === "doing").length,
+    focusMinutes: facts.focusMinutes,
+    usageByCategory: usage.byCategory,
+    projects: projectRepository.list().map((project) => ({
+      name: project.name,
+      status: project.status,
+      category: project.category,
+      currentStage: project.currentStage,
+    })),
+  });
+});
+
 ipcMain.handle("focus:get-current", (event) => {
   if (!senderWindow(event) || !focusRepository) throw new Error("专注系统尚未准备好");
   return focusRepository.getCurrent();
@@ -279,7 +367,14 @@ app.whenReady().then(() => {
   obsidianReader = new ObsidianReader();
   obsidianProjectService = new ObsidianProjectService(obsidianReader);
   projectRepository = new ProjectRepository(databasePath);
+  systemRepository = new SystemRepository(databasePath);
+  obsidianWriter = new ObsidianWriter();
   createMainWindow();
+  runtimeCoordinator = new RuntimeCoordinator({
+    repository: systemRepository,
+    onReminder: (message) => mainWindow?.webContents.send("runtime:reminder", message),
+  });
+  runtimeCoordinator.start();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -289,6 +384,12 @@ app.whenReady().then(() => {
 });
 
 app.on("before-quit", () => {
+  runtimeCoordinator?.stop();
+  runtimeCoordinator = null;
+  pendingReviews.clear();
+  obsidianWriter = null;
+  systemRepository?.close();
+  systemRepository = null;
   projectRepository?.close();
   projectRepository = null;
   obsidianProjectService = null;

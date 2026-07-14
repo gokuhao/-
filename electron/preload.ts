@@ -99,4 +99,29 @@ contextBridge.exposeInMainWorld("stepBeast", {
     confirmSync: (proposal: ObsidianProjectProposal, selectedCandidateKeys: string[]) =>
       ipcRenderer.invoke("project:confirm-sync", proposal, selectedCandidateKeys),
   },
+  settings: {
+    get: () => ipcRenderer.invoke("settings:get"),
+    update: (input: unknown) => ipcRenderer.invoke("settings:update", input),
+  },
+  activity: {
+    getSummary: (days = 7) => ipcRenderer.invoke("activity:get-summary", days),
+  },
+  reviews: {
+    propose: () => ipcRenderer.invoke("review:propose"),
+    confirm: (proposalId: string) => ipcRenderer.invoke("review:confirm", proposalId),
+    list: () => ipcRenderer.invoke("review:list"),
+  },
+  chat: {
+    send: (message: string) => ipcRenderer.invoke("chat:send", message),
+  },
+  coo: {
+    analyze: () => ipcRenderer.invoke("coo:analyze"),
+  },
+  runtime: {
+    onReminder: (callback: (message: string) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, message: string) => callback(message);
+      ipcRenderer.on("runtime:reminder", listener);
+      return () => ipcRenderer.removeListener("runtime:reminder", listener);
+    },
+  },
 });

@@ -6,6 +6,7 @@ export type TaskStatus = "todo" | "doing" | "completed" | "cancelled";
 export type TaskRecord = {
   id: string;
   parentTaskId: string | null;
+  projectId: string | null;
   title: string;
   status: TaskStatus;
   estimatedMinutes: number | null;
@@ -83,6 +84,7 @@ export type TaskCompletionResult = {
 type TaskRow = {
   id: string;
   parent_task_id: string | null;
+  project_id: string | null;
   title: string;
   status: TaskStatus;
   estimated_minutes: number | null;
@@ -123,7 +125,7 @@ export class TaskRepository {
 
   list(): TaskRecord[] {
     const rows = this.database.prepare(`
-      SELECT id, parent_task_id, title, status, estimated_minutes, actual_minutes,
+      SELECT id, parent_task_id, project_id, title, status, estimated_minutes, actual_minutes,
              next_action, evidence, reward_xp,
              created_at, updated_at, completed_at
       FROM tasks
@@ -427,7 +429,7 @@ export class TaskRepository {
 
   private getById(id: string): TaskRecord {
     const row = this.database.prepare(`
-      SELECT id, parent_task_id, title, status, estimated_minutes, actual_minutes,
+      SELECT id, parent_task_id, project_id, title, status, estimated_minutes, actual_minutes,
              next_action, evidence, reward_xp,
              created_at, updated_at, completed_at
       FROM tasks
@@ -611,7 +613,7 @@ export class TaskRepository {
   private readPlan(date: string): TodayPlan {
     const rows = this.database.prepare(`
       SELECT i.role, i.sort_order,
-             t.id, t.parent_task_id, t.title, t.status, t.estimated_minutes,
+             t.id, t.parent_task_id, t.project_id, t.title, t.status, t.estimated_minutes,
              t.actual_minutes, t.next_action, t.evidence, t.reward_xp,
              t.created_at, t.updated_at, t.completed_at
       FROM daily_plans p
@@ -632,7 +634,7 @@ export class TaskRepository {
 
   private listProposalTasks(proposalId: string): TaskRecord[] {
     const rows = this.database.prepare(`
-      SELECT id, parent_task_id, title, status, estimated_minutes, actual_minutes,
+      SELECT id, parent_task_id, project_id, title, status, estimated_minutes, actual_minutes,
              next_action, evidence, reward_xp, created_at, updated_at, completed_at
       FROM tasks
       WHERE proposal_id = ? AND deleted_at IS NULL
@@ -669,6 +671,7 @@ function mapTaskRow(row: TaskRow): TaskRecord {
   return {
     id: row.id,
     parentTaskId: row.parent_task_id,
+    projectId: row.project_id,
     title: row.title,
     status: row.status,
     estimatedMinutes: row.estimated_minutes,
