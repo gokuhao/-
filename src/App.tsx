@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { ActionPanel } from "./components/ActionPanel";
 import { SystemOverlay, type SystemTool } from "./components/SystemOverlay";
 import { PetAvatar } from "./pet/PetAvatar";
 import type { PetState } from "./pet/petMachine";
 
 const FOCUS_SECONDS = 25 * 60;
+const DEFAULT_APPEARANCE = { petScale: 1, panelScale: 1 } as const;
 
 export function App(): React.JSX.Element {
   const [expanded, setExpanded] = useState(false);
@@ -31,6 +33,7 @@ export function App(): React.JSX.Element {
   const [projectSyncing, setProjectSyncing] = useState(false);
   const [projectConfirming, setProjectConfirming] = useState(false);
   const [activeTool, setActiveTool] = useState<SystemTool | null>(null);
+  const [appearance, setAppearance] = useState<{ petScale: number; panelScale: number }>(DEFAULT_APPEARANCE);
 
   const taskRoles = Object.fromEntries(
     (todayPlan?.items ?? []).map((item) => [item.task.id, item.role]),
@@ -42,6 +45,7 @@ export function App(): React.JSX.Element {
     ?? null;
   const focusActive = focusSession?.status === "active";
   const focusPaused = focusSession?.status === "paused";
+  const windowScale = expanded ? appearance.panelScale : appearance.petScale;
 
   useEffect(() => {
     if (!window.stepBeast) return;
@@ -72,6 +76,12 @@ export function App(): React.JSX.Element {
 
   useEffect(() => {
     void refreshObsidianStatus();
+  }, []);
+
+  useEffect(() => {
+    if (!window.stepBeast) return;
+    void window.stepBeast.settings.get().then((settings) => setAppearance(settings)).catch(() => undefined);
+    return window.stepBeast.settings.onChanged((settings) => setAppearance(settings));
   }, []);
 
   useEffect(() => {
@@ -413,7 +423,15 @@ export function App(): React.JSX.Element {
   }
 
   return (
-    <main className={`desktop-pet ${expanded ? "desktop-pet--expanded" : ""} ${activeTool ? "desktop-pet--workbench" : ""}`}>
+    <main
+      className={`desktop-pet ${expanded ? "desktop-pet--expanded" : ""} ${activeTool ? "desktop-pet--workbench" : ""}`}
+      style={{
+        width: `${100 / windowScale}%`,
+        height: `${100 / windowScale}%`,
+        transform: `scale(${windowScale})`,
+        transformOrigin: "top left",
+      } as CSSProperties}
+    >
       {expanded && !activeTool && (
         <ActionPanel
           tasks={tasks}

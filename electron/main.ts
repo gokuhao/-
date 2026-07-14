@@ -9,18 +9,24 @@ import { ObsidianProjectService } from "./obsidianProjectService.js";
 import { ProjectRepository } from "./projectRepository.js";
 import { TaskRepository } from "./taskRepository.js";
 import { RuntimeCoordinator } from "./runtimeCoordinator.js";
-import { SystemRepository } from "./systemRepository.js";
+import { SystemRepository, type AppSettings } from "./systemRepository.js";
 import { constrainCollapsedPosition, resolveDraggedWindowPosition } from "./windowPosition.js";
 
-const COLLAPSED_SIZE = { width: 240, height: 260 };
-const PANEL_SIZE = { width: 430, height: 720 };
-const WORKBENCH_SIZE = { width: 900, height: 720 };
+const BASE_WINDOW_SIZES = {
+  collapsed: { width: 240, height: 260 },
+  panel: { width: 430, height: 720 },
+  workbench: { width: 900, height: 720 },
+} as const;
 
 type SavedWindowState = { x: number; y: number };
 type DragSession = { offsetX: number; offsetY: number };
+type WindowMode = keyof typeof BASE_WINDOW_SIZES;
+type AppearanceSettings = Pick<AppSettings, "petScale" | "panelScale">;
 
 const dragSessions = new Map<number, DragSession>();
 const collapsedPositions = new Map<number, SavedWindowState>();
+const windowModes = new Map<number, WindowMode>();
+let appearanceSettings: AppearanceSettings = { petScale: 1, panelScale: 1 };
 let taskRepository: TaskRepository | null = null;
 let focusRepository: FocusRepository | null = null;
 let hermesClient: HermesClient | null = null;
@@ -48,10 +54,11 @@ function readWindowState(): SavedWindowState | null {
 
 function saveWindowState(window: BrowserWindow): void {
   const { x, y, width, height } = window.getBounds();
+  const collapsedSize = windowSizeForMode("collapsed");
   // 始终换算成收起状态坐标，避免展开面板后退出导致下次启动位置跳动。
   const collapsedPosition = {
-    x: Math.round(x + (width - COLLAPSED_SIZE.width) / 2),
-    y: y + height - COLLAPSED_SIZE.height,
+    x: Math.round(x + (width - collapsedSize.width) / 2),
+    y: y + height - collapsedSize.height,
   };
   collapsedPositions.set(window.id, collapsedPosition);
   try {
@@ -62,23 +69,25 @@ function saveWindowState(window: BrowserWindow): void {
 }
 
 function getInitialPosition(): SavedWindowState {
+  const collapsedSize = windowSizeForMode("collapsed");
   const saved = readWindowState();
   if (saved) {
-    const workArea = screen.getDisplayMatching({ ...saved, ...COLLAPSED_SIZE }).workArea;
-    return constrainCollapsedPosition(saved, COLLAPSED_SIZE, workArea);
+    const workArea = screen.getDisplayMatching({ ...saved, ...collapsedSize }).workArea;
+    return constrainCollapsedPosition(saved, collapsedSize, workArea);
   }
 
   const workArea = screen.getPrimaryDisplay().workArea;
   return {
-    x: workArea.x + workArea.width - COLLAPSED_SIZE.width - 28,
-    y: workArea.y + workArea.height - COLLAPSED_SIZE.height - 28,
+    x: workArea.x + workArea.width - collapsedSize.width - 28,
+    y: workArea.y + workArea.height - collapsedSize.height - 28,
   };
 }
 
 function createMainWindow(): void {
   const position = getInitialPosition();
+  const collapsedSize = windowSizeForMode("collapsed");
   mainWindow = new BrowserWindow({
-    ...COLLAPSED_SIZE,
+    ...collapsedSize,
     ...position,
     title: "步步兽",
     frame: false,
@@ -97,10 +106,12 @@ function createMainWindow(): void {
   });
   const windowId = mainWindow.id;
   collapsedPositions.set(windowId, position);
+  windowModes.set(windowId, "collapsed");
 
   mainWindow.setAlwaysOnTop(true, "floating");
   mainWindow.on("closed", () => {
     collapsedPositions.delete(windowId);
+    windowModes.delete(windowId);
     if (mainWindow?.id === windowId) mainWindow = null;
   });
 
@@ -114,6 +125,35 @@ function createMainWindow(): void {
 
 function senderWindow(event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): BrowserWindow | null {
   return BrowserWindow.fromWebContents(event.sender);
+}
+
+function windowSizeForMode(mode: WindowMode): { width: number; height: number } {
+  const base = BASE_WINDOW_SIZES[mode];
+  const scale = mode === "collapsed" ? appearanceSettings.petScale : appearanceSettings.panelScale;
+  return { width: Math.round(base.width * scale), height: Math.round(base.height * scale) };
+}
+
+function resizeWindowForAppearance(window: BrowserWindow): void {
+  const mode = windowModes.get(window.id) ?? "collapsed";
+  const current = window.getBounds();
+  const workArea = screen.getDisplayMatching(current).workArea;
+  const requested = windowSizeForMode(mode);
+  const next = {
+    width: Math.min(requested.width, workArea.width),
+    height: Math.min(requested.height, workArea.height),
+  };
+  const proposed = {
+    x: Math.round(current.x - (next.width - current.width) / 2),
+    y: current.y + current.height - next.height,
+  };
+  const position = mode === "collapsed"
+    ? constrainCollapsedPosition(proposed, next, workArea)
+    : {
+        x: Math.min(Math.max(proposed.x, workArea.x), workArea.x + workArea.width - next.width),
+        y: Math.min(Math.max(proposed.y, workArea.y), workArea.y + workArea.height - next.height),
+      };
+  window.setBounds({ ...position, ...next });
+  if (mode === "collapsed") saveWindowState(window);
 }
 
 ipcMain.on("pet-window:drag-start", (event, point: { screenX: number; screenY: number }) => {
@@ -131,13 +171,14 @@ ipcMain.on("pet-window:drag-move", (event, point: { screenX: number; screenY: nu
   const session = window ? dragSessions.get(window.id) : null;
   if (!window || !session || !Number.isFinite(point.screenX) || !Number.isFinite(point.screenY)) return;
   const bounds = window.getBounds();
+  const collapsedSize = windowSizeForMode("collapsed");
   const workArea = screen.getDisplayNearestPoint({ x: point.screenX, y: point.screenY }).workArea;
   const next = resolveDraggedWindowPosition(
     point,
     session,
     bounds,
     workArea,
-    bounds.width === COLLAPSED_SIZE.width && bounds.height === COLLAPSED_SIZE.height,
+    bounds.width === collapsedSize.width && bounds.height === collapsedSize.height,
   );
   window.setPosition(next.x, next.y);
 });
@@ -154,17 +195,19 @@ ipcMain.on("pet-window:set-expanded", (event, expanded: boolean, mode: "panel" |
   if (!window) return;
   const current = window.getBounds();
   const workArea = screen.getDisplayMatching(current).workArea;
-  const requested = expanded ? mode === "workbench" ? WORKBENCH_SIZE : PANEL_SIZE : COLLAPSED_SIZE;
+  const targetMode: WindowMode = expanded ? mode : "collapsed";
+  const collapsedSize = windowSizeForMode("collapsed");
+  const requested = windowSizeForMode(targetMode);
   const next = {
     width: Math.min(requested.width, workArea.width),
     height: Math.min(requested.height, workArea.height),
   };
-  const isCollapsed = current.width === COLLAPSED_SIZE.width && current.height === COLLAPSED_SIZE.height;
+  const isCollapsed = current.width === collapsedSize.width && current.height === collapsedSize.height;
   if (expanded && isCollapsed) collapsedPositions.set(window.id, { x: current.x, y: current.y });
 
   const remembered = !expanded ? collapsedPositions.get(window.id) : null;
   if (remembered) {
-    const rememberedWorkArea = screen.getDisplayMatching({ ...remembered, ...COLLAPSED_SIZE }).workArea;
+    const rememberedWorkArea = screen.getDisplayMatching({ ...remembered, ...collapsedSize }).workArea;
     window.setBounds({
       ...constrainCollapsedPosition(remembered, next, rememberedWorkArea),
       ...next,
@@ -179,6 +222,7 @@ ipcMain.on("pet-window:set-expanded", (event, expanded: boolean, mode: "panel" |
       ...next,
     });
   }
+  windowModes.set(window.id, targetMode);
   if (!expanded) saveWindowState(window);
 });
 
@@ -289,8 +333,12 @@ ipcMain.handle("settings:get", (event) => {
 });
 
 ipcMain.handle("settings:update", (event, input) => {
-  if (!senderWindow(event) || !systemRepository) throw new Error("设置系统尚未准备好");
+  const window = senderWindow(event);
+  if (!window || !systemRepository) throw new Error("设置系统尚未准备好");
   const settings = systemRepository.updateSettings(input);
+  appearanceSettings = { petScale: settings.petScale, panelScale: settings.panelScale };
+  resizeWindowForAppearance(window);
+  window.webContents.send("settings:changed", settings);
   // 开发模式不写 Windows 开机启动项，避免调试版本污染系统设置。
   if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: settings.autoLaunch });
   return settings;
@@ -406,6 +454,8 @@ app.whenReady().then(() => {
   obsidianProjectService = new ObsidianProjectService(obsidianReader);
   projectRepository = new ProjectRepository(databasePath);
   systemRepository = new SystemRepository(databasePath);
+  const settings = systemRepository.getSettings();
+  appearanceSettings = { petScale: settings.petScale, panelScale: settings.panelScale };
   obsidianWriter = new ObsidianWriter();
   createMainWindow();
   runtimeCoordinator = new RuntimeCoordinator({

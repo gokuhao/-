@@ -9,6 +9,8 @@ export type AppSettings = {
   activityTrackingEnabled: boolean;
   autoLaunch: boolean;
   activeMode: 2 | 3 | 4;
+  petScale: 0.75 | 1 | 1.25;
+  panelScale: 0.9 | 1 | 1.1;
 };
 
 export type ActivityCategory = "work" | "learning" | "communication" | "entertainment" | "other";
@@ -51,6 +53,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   activityTrackingEnabled: false,
   autoLaunch: false,
   activeMode: 3,
+  petScale: 1,
+  panelScale: 1,
 };
 
 export class SystemRepository {
@@ -271,6 +275,8 @@ function validateSettings(value: AppSettings): AppSettings {
   }
   if (!isTime(value.morningTime) || !isTime(value.eveningTime)) throw new Error("提醒时间无效");
   if (![2, 3, 4].includes(value.activeMode)) throw new Error("主动模式无效");
+  if (![0.75, 1, 1.25].includes(value.petScale)) throw new Error("宠物大小无效");
+  if (![0.9, 1, 1.1].includes(value.panelScale)) throw new Error("窗口大小无效");
   return { ...value };
 }
 

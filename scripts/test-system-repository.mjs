@@ -53,10 +53,14 @@ const focus = new FocusRepository(databasePath);
 const system = new SystemRepository(databasePath);
 try {
   assert.equal(system.getSettings().activityTrackingEnabled, false);
-  const updated = system.updateSettings({ ...system.getSettings(), morningReminderEnabled: true, activeMode: 4 });
+  const updated = system.updateSettings({ ...system.getSettings(), morningReminderEnabled: true, activeMode: 4, petScale: 1.25, panelScale: 0.9 });
   assert.equal(updated.morningReminderEnabled, true);
   assert.equal(updated.activeMode, 4);
+  assert.equal(updated.petScale, 1.25);
+  assert.equal(updated.panelScale, 0.9);
   assert.throws(() => system.updateSettings({ ...updated, morningTime: "25:70" }), /时间无效/);
+  assert.throws(() => system.updateSettings({ ...updated, petScale: 2 }), /宠物大小无效/);
+  assert.throws(() => system.updateSettings({ ...updated, panelScale: 0.5 }), /窗口大小无效/);
 
   system.recordUsage("Visual Studio Code", "work", 30);
   system.recordUsage("Visual Studio Code", "work", 30);

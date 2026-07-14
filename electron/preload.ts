@@ -103,6 +103,11 @@ contextBridge.exposeInMainWorld("stepBeast", {
   settings: {
     get: () => ipcRenderer.invoke("settings:get"),
     update: (input: unknown) => ipcRenderer.invoke("settings:update", input),
+    onChanged: (callback: (settings: unknown) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, settings: unknown) => callback(settings);
+      ipcRenderer.on("settings:changed", listener);
+      return () => ipcRenderer.removeListener("settings:changed", listener);
+    },
   },
   activity: {
     getSummary: (days = 7) => ipcRenderer.invoke("activity:get-summary", days),

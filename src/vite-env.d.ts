@@ -63,6 +63,7 @@ interface Window {
     settings: {
       get: () => Promise<StepBeastSettings>;
       update: (input: StepBeastSettings) => Promise<StepBeastSettings>;
+      onChanged: (callback: (settings: StepBeastSettings) => void) => () => void;
     };
     activity: {
       getSummary: (days?: number) => Promise<StepBeastUsageSummary>;
@@ -249,6 +250,8 @@ type StepBeastSettings = {
   activityTrackingEnabled: boolean;
   autoLaunch: boolean;
   activeMode: 2 | 3 | 4;
+  petScale: 0.75 | 1 | 1.25;
+  panelScale: 0.9 | 1 | 1.1;
 };
 
 type StepBeastUsageSummary = {
