@@ -296,6 +296,13 @@ V0.1 使用易理解的固定阶梯：
 - 仅保留最近 5 份自动备份，避免长期占用磁盘。
 - 导出功能生成用户可选择位置的 SQLite 备份或 JSON；不得静默写入 Obsidian。
 
-## 7. V0.2 以后新增表
+## 7. Migration 8：设置、活动与复盘
 
-后续按实际需要新增 `conversations`、`reviews`、`sync_jobs` 与 `tool_permissions`。V0.1 不提前创建空表。
+实现状态：已完成。
+
+- `settings`：保存提醒时间、提醒开关、行为感知、开机启动和主动模式；所有高影响开关默认关闭。
+- `activity_usage`：按日期、应用名和分类累计秒数，只保存应用名，不保存窗口标题或内容。
+- `daily_reviews`：保存已确认复盘的提案 ID、日期、目标路径和摘要；`proposal_id` 唯一，重复确认不会重复记录。
+- `DailyReviewWritten` 事件记录确认结果，不保存 Hermes API Key 或完整无关笔记。
+
+Obsidian 文件与 SQLite 无法共享一个跨系统事务，因此确认采用可恢复顺序：先原子创建新 Markdown，再幂等写入数据库。若数据库暂时失败，重试会识别相同文件内容并继续确认；已有不同内容的文件绝不覆盖。
