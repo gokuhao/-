@@ -284,7 +284,7 @@ button { font: inherit; }
 .apple-stop-confirm button { min-height: 28px; padding: 6px 10px; border: 0; border-radius: 9px; color: #ced4d0; background: #ffffff0d; cursor: pointer; font-size: 9px; }
 .apple-stop-confirm button:last-child { color: #fff; background: #b8604d; }
 .apple-stop-confirm button:disabled { opacity: .45; }
-.apple-focus-setup { display: grid; gap: 14px; padding: 5px 0 10px; }
+.apple-focus-setup { min-height: 325px; display: flex; flex-direction: column; gap: 10px; padding: 5px 0 0; }
 .apple-focus-setup-heading { display: grid; gap: 4px; }
 .apple-focus-setup-heading span { color: #9baca1; font-size: 10px; }
 .apple-focus-setup-heading strong { color: #f4f5f2; font-size: 16px; }
@@ -309,7 +309,7 @@ button { font: inherit; }
 .apple-custom-duration { display: grid; grid-template-columns: 1fr 104px; align-items: center; gap: 10px; }
 .apple-focus-setup-summary { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 11px; color: #9baca1; background: #ffffff08; font-size: 10px; }
 .apple-focus-setup-summary strong { color: #f4f5f2; font-size: 12px; }
-.apple-focus-setup-actions { display: flex; gap: 8px; }
+.apple-focus-setup-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid #ffffff14; }
 .apple-focus-setup-actions button { min-height: 38px; padding: 8px 14px; border: 0; border-radius: 11px; color: #ced4d0; background: #ffffff0d; cursor: pointer; font-size: 10px; }
 .apple-focus-setup-actions .apple-primary-button { flex: 1; color: #fff; background: #0a84ff; font-weight: 700; }
 .apple-focus-setup-actions button:disabled { cursor: default; opacity: .4; }
@@ -363,6 +363,8 @@ button { font: inherit; }
   box-shadow: 0 24px 70px #2e1d102e, inset 0 1px #ffffffc7;
   backdrop-filter: blur(28px) saturate(118%);
 }
+.apple-action-panel--setup { height: 460px; }
+.apple-action-panel--setup .apple-bottom-nav { display: none; }
 .apple-action-panel::before { background: radial-gradient(circle at 92% 2%, #91b87b22, transparent 34%); }
 .apple-date, .apple-task-meta, .apple-next-task small, .apple-plan-count, .apple-empty, .apple-focus-copy span, .apple-focus-ring span { color: #786c5d; }
 .apple-greeting, .apple-main-task h1, .apple-next-task, .apple-focus-copy strong, .apple-focus-ring strong { color: #29251f; }
@@ -385,6 +387,7 @@ button { font: inherit; }
 .apple-focus-setup-summary strong { color: #29251f; }
 .apple-focus-setup-actions button { color: #5f5549; background: #ffffff8f; }
 .apple-focus-setup-actions .apple-primary-button { color: #fff; background: #202522; }
+.apple-focus-setup-actions { border-color: #49351f18; }
 .apple-next-section, .apple-bottom-nav, .apple-task-manager { border-color: #49351f18; }
 .apple-section-heading { color: #554c41; }
 .apple-section-heading button { color: #5d8450; }

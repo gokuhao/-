@@ -319,7 +319,7 @@ export function ActionPanel({
   );
 
   return (
-    <section className={`action-panel apple-action-panel ${focusActive || focusPaused ? "apple-action-panel--focus" : ""}`} aria-label="步步兽行动面板">
+    <section className={`action-panel apple-action-panel ${focusActive || focusPaused ? "apple-action-panel--focus" : ""} ${focusSetupOpen ? "apple-action-panel--setup" : ""}`} aria-label="步步兽行动面板">
       <header className="apple-panel-header">
         <div>
           <p className="apple-date"><span className="apple-ready-dot" />步步兽 · 今日 · {todayLabel}</p>
