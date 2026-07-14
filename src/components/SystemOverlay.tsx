@@ -12,13 +12,17 @@ type Props = {
   petProfile: StepBeastPetProfile | null;
   hermesStatus: StepBeastHermesStatus | null;
   obsidianStatus: StepBeastObsidianStatus | null;
+  projectProposal: StepBeastObsidianProjectProposal | null;
   projectSyncing: boolean;
+  projectConfirming: boolean;
   onCreateTask: (title: string) => Promise<void>;
   onCompleteTask: (id: string) => Promise<void>;
   onToggleFocus: () => void;
   onRetryHermes: () => void;
   onRetryObsidian: () => void;
   onProposeProjectSync: () => void;
+  onConfirmProjectSync: (selectedCandidateKeys: string[]) => void;
+  onCancelProjectSync: () => void;
   onQuit: () => void;
   onClose: () => void;
   onNotice: (message: string) => void;
@@ -42,13 +46,17 @@ export function SystemOverlay({
   petProfile,
   hermesStatus,
   obsidianStatus,
+  projectProposal,
   projectSyncing,
+  projectConfirming,
   onCreateTask,
   onCompleteTask,
   onToggleFocus,
   onRetryHermes,
   onRetryObsidian,
   onProposeProjectSync,
+  onConfirmProjectSync,
+  onCancelProjectSync,
   onQuit,
   onClose,
   onNotice,
@@ -67,6 +75,7 @@ export function SystemOverlay({
   const [usage, setUsage] = useState<StepBeastUsageSummary | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [taskFilter, setTaskFilter] = useState<"active" | "completed">("active");
+  const [selectedProjectTasks, setSelectedProjectTasks] = useState<string[]>([]);
 
   useEffect(() => {
     setActiveView(tool === "chat" ? "chat" : "tasks");
@@ -83,6 +92,11 @@ export function SystemOverlay({
     }
     if (activeView === "memory") void loadNotes();
   }, [activeView]);
+
+  useEffect(() => {
+    setSelectedProjectTasks([]);
+    if (!projectProposal && activeView === "projects") void loadProjects();
+  }, [projectProposal?.proposalId]);
 
   async function loadSettings(): Promise<void> {
     try { setSettings(await window.stepBeast!.settings.get()); } catch (reason) { setError(messageOf(reason)); }
@@ -181,7 +195,7 @@ export function SystemOverlay({
   }
 
   function proposeProjectSync(): void {
-    onClose();
+    setActiveView("projects");
     onProposeProjectSync();
   }
 
@@ -285,6 +299,51 @@ export function SystemOverlay({
           )}
         </main>
       </div>
+
+      {projectProposal && (
+        <section className="workbench-sync-overlay" role="dialog" aria-modal="true" aria-label="Obsidian 项目同步确认">
+          <div className="workbench-sync-dialog">
+            <header>
+              <div><p>Obsidian 项目同步</p><h2>{projectProposal.summary}</h2></div>
+              <button type="button" onClick={onCancelProjectSync} disabled={projectConfirming} aria-label="关闭同步确认">×</button>
+            </header>
+            <div className="workbench-sync-scroll">
+              <section>
+                <h3>识别到的项目</h3>
+                <div className="workbench-sync-projects">
+                  {projectProposal.projects.map((project) => (
+                    <article key={project.sourcePath}>
+                      <div><strong>{project.name}</strong><span className="workbench-badge">{projectStatusLabel(project.status)}</span></div>
+                      <p>{projectCategoryLabel(project.category)} · {project.currentStage ?? project.goal ?? "未找到明确阶段说明"}</p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+              <fieldset className="workbench-sync-tasks">
+                <legend>可选任务候选</legend>
+                <p>任务默认不创建，最多选择 5 个。</p>
+                {projectProposal.taskCandidates.length === 0 ? <small>当前项目中没有找到明确的下一步行动。</small> : projectProposal.taskCandidates.map((candidate) => (
+                  <label key={candidate.candidateKey}>
+                    <input
+                      type="checkbox"
+                      checked={selectedProjectTasks.includes(candidate.candidateKey)}
+                      disabled={!selectedProjectTasks.includes(candidate.candidateKey) && selectedProjectTasks.length >= 5}
+                      onChange={() => setSelectedProjectTasks((current) => current.includes(candidate.candidateKey)
+                        ? current.filter((key) => key !== candidate.candidateKey)
+                        : [...current, candidate.candidateKey])}
+                    />
+                    <span><strong>{candidate.title}</strong><small>{candidate.projectName} · {candidate.estimatedMinutes} 分钟</small></span>
+                  </label>
+                ))}
+              </fieldset>
+            </div>
+            <footer>
+              <span>已选择 {selectedProjectTasks.length} 个任务</span>
+              <div><button type="button" onClick={onCancelProjectSync} disabled={projectConfirming}>取消</button><button className="workbench-primary" type="button" onClick={() => onConfirmProjectSync(selectedProjectTasks)} disabled={projectConfirming}>{projectConfirming ? "同步中…" : selectedProjectTasks.length ? `同步项目并创建 ${selectedProjectTasks.length} 个任务` : "仅同步项目"}</button></div>
+            </footer>
+          </div>
+        </section>
+      )}
     </section>
   );
 }

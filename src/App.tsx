@@ -390,9 +390,6 @@ export function App(): React.JSX.Element {
           hermesChecking={hermesChecking}
           obsidianStatus={obsidianStatus}
           obsidianChecking={obsidianChecking}
-          projectProposal={projectProposal}
-          projectSyncing={projectSyncing}
-          projectConfirming={projectConfirming}
           decompositionProposal={decompositionProposal}
           decomposingTaskId={decomposingTaskId}
           confirmingProposal={confirmingProposal}
@@ -410,12 +407,6 @@ export function App(): React.JSX.Element {
           onToggleFocus={() => void toggleFocus()}
           onRetryHermes={() => void refreshHermesStatus()}
           onRetryObsidian={() => void refreshObsidianStatus()}
-          onProposeProjectSync={() => void proposeProjectSync()}
-          onConfirmProjectSync={(selectedCandidateKeys) => void confirmProjectSync(selectedCandidateKeys)}
-          onCancelProjectSync={() => {
-            setProjectProposal(null);
-            setPetState("idle");
-          }}
           onDecomposeTask={(id) => void decomposeTask(id)}
           onConfirmDecomposition={() => void confirmDecomposition()}
           onCancelDecomposition={() => {
@@ -442,13 +433,20 @@ export function App(): React.JSX.Element {
           petProfile={petProfile}
           hermesStatus={hermesStatus}
           obsidianStatus={obsidianStatus}
+          projectProposal={projectProposal}
           projectSyncing={projectSyncing}
+          projectConfirming={projectConfirming}
           onCreateTask={createTask}
           onCompleteTask={completeTask}
           onToggleFocus={() => void toggleFocus()}
           onRetryHermes={() => void refreshHermesStatus()}
           onRetryObsidian={() => void refreshObsidianStatus()}
           onProposeProjectSync={() => void proposeProjectSync()}
+          onConfirmProjectSync={(selectedCandidateKeys) => void confirmProjectSync(selectedCandidateKeys)}
+          onCancelProjectSync={() => {
+            setProjectProposal(null);
+            setPetState("idle");
+          }}
           onQuit={() => window.stepBeast?.window.close()}
           onClose={() => setActiveTool(null)}
           onNotice={setRewardNotice}

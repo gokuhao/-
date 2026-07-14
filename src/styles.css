@@ -188,20 +188,6 @@ button { font: inherit; }
 .settings-tool small { color: #7f8d7d; }
 .proposal-reasoning { margin: 8px 0 0; color: #9baa98; font-size: 10px; line-height: 1.5; }
 .daily-plan-proposal ol { list-style: none; padding-left: 0; }
-.project-sync-scroll { min-width: 0; min-height: 0; margin: 12px 0; overflow-x: hidden; overflow-y: auto; }
-.project-proposal-list { display: grid; gap: 6px; }
-.project-proposal-list article { min-width: 0; padding: 7px 9px; border-radius: 10px; background: #ffffff09; }
-.project-proposal-list article div { display: flex; min-width: 0; justify-content: space-between; gap: 8px; }
-.project-proposal-list article strong { font-size: 11px; }
-.project-proposal-list article span, .project-proposal-list article small { color: #879685; font-size: 9px; }
-.project-proposal-list article small { display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.project-task-candidates { display: grid; gap: 6px; margin: 12px 0 0; padding: 10px; border: 1px solid #ffffff16; border-radius: 10px; }
-.project-task-candidates legend { padding: 0 5px; color: #a8cb93; font-size: 10px; }
-.project-task-candidates > small { color: #879685; font-size: 9px; }
-.project-task-candidates label { display: flex; align-items: flex-start; gap: 7px; cursor: pointer; }
-.project-task-candidates label span { display: grid; gap: 2px; }
-.project-task-candidates label strong { font-size: 10px; }
-.project-task-candidates label small { color: #879685; font-size: 9px; }
 .panel-footer button { padding: 0; border: 0; color: #849081; background: transparent; cursor: pointer; }
 .panel-footer button:hover { color: #d7ddd4; }
 
@@ -371,11 +357,10 @@ button { font: inherit; }
   box-shadow: 0 16px 42px #2e1d1038;
 }
 .apple-action-panel .proposal-overlay h2, .apple-action-panel .proposal-overlay li strong { color: #2e281f; }
-.apple-action-panel .proposal-overlay li, .apple-action-panel .project-proposal-list article { background: #f3e5d3; }
-.apple-action-panel .proposal-overlay li span, .apple-action-panel .proposal-overlay li small, .apple-action-panel .proposal-reasoning, .apple-action-panel .project-proposal-list article span, .apple-action-panel .project-proposal-list article small { color: #776b5d; }
+.apple-action-panel .proposal-overlay li { background: #f3e5d3; }
+.apple-action-panel .proposal-overlay li span, .apple-action-panel .proposal-overlay li small, .apple-action-panel .proposal-reasoning { color: #776b5d; }
 .apple-action-panel .proposal-actions button { color: #5e554a; background: #eee2d2; }
 .apple-action-panel .proposal-actions button:last-child { color: #fff; background: #202522; }
-.apple-action-panel .project-task-candidates { border-color: #49351f20; }
 
 /* 完整工作台：扩大后的同一 Electron 窗口，避免多个弹窗互相遮挡。 */
 .workbench-shell {
@@ -390,6 +375,7 @@ button { font: inherit; }
   --wb-orange: #f28b45;
   width: 100%;
   height: 100%;
+  position: relative;
   display: grid;
   grid-template-rows: 58px minmax(0, 1fr);
   overflow: hidden;
@@ -514,10 +500,114 @@ button { font: inherit; }
 .workbench-connections em { color: var(--wb-muted); font-size: 10px; font-style: normal; }
 .workbench-quit { justify-self: center; padding: 8px 12px; border: 0; color: #91715b; background: transparent; cursor: pointer; }
 
+/* 项目同步属于完整工作台流程；弹层自身管理滚动，避免页面退回今日插件后卡住。 */
+.workbench-sync-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #33271b70;
+  backdrop-filter: blur(8px);
+}
+.workbench-sync-dialog {
+  width: min(720px, 100%);
+  max-height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid var(--wb-line);
+  border-radius: 22px;
+  background: var(--wb-paper);
+  box-shadow: 0 24px 70px #2e1d1052;
+}
+.workbench-sync-dialog > header,
+.workbench-sync-dialog > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  background: #fffaf2;
+}
+.workbench-sync-dialog > header { border-bottom: 1px solid var(--wb-line); }
+.workbench-sync-dialog > header > div { min-width: 0; }
+.workbench-sync-dialog > header p { margin: 0 0 3px; color: var(--wb-green-strong); font-size: 12px; }
+.workbench-sync-dialog > header h2 { margin: 0; font-size: 18px; line-height: 1.4; }
+.workbench-sync-dialog > header button {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 10px;
+  color: var(--wb-muted);
+  background: #f0e2d1;
+  cursor: pointer;
+  font-size: 20px;
+}
+.workbench-sync-scroll {
+  min-height: 0;
+  padding: 20px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #94775a60 transparent;
+}
+.workbench-sync-scroll h3,
+.workbench-sync-tasks legend { margin: 0 0 10px; font-size: 14px; font-weight: 650; }
+.workbench-sync-projects { display: grid; gap: 9px; }
+.workbench-sync-projects article {
+  display: grid;
+  gap: 7px;
+  padding: 13px 14px;
+  border: 1px solid var(--wb-line);
+  border-radius: 14px;
+  background: #ffffff9c;
+}
+.workbench-sync-projects article > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.workbench-sync-projects article strong { min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
+.workbench-sync-projects article p { margin: 0; color: var(--wb-muted); font-size: 12px; line-height: 1.5; }
+.workbench-sync-tasks { display: grid; gap: 8px; margin: 20px 0 0; padding: 0; border: 0; }
+.workbench-sync-tasks > p { margin: -7px 0 4px; color: var(--wb-muted); font-size: 12px; }
+.workbench-sync-tasks > small { color: var(--wb-muted); font-size: 12px; }
+.workbench-sync-tasks label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: #f1e5d6;
+  cursor: pointer;
+}
+.workbench-sync-tasks input { width: 17px; height: 17px; flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--wb-green-strong); }
+.workbench-sync-tasks label > span { min-width: 0; display: grid; gap: 4px; }
+.workbench-sync-tasks label strong { overflow-wrap: anywhere; font-size: 13px; }
+.workbench-sync-tasks label small { color: var(--wb-muted); font-size: 11px; }
+.workbench-sync-dialog > footer { border-top: 1px solid var(--wb-line); }
+.workbench-sync-dialog > footer > span { color: var(--wb-muted); font-size: 12px; }
+.workbench-sync-dialog > footer > div { display: flex; justify-content: flex-end; gap: 8px; }
+.workbench-sync-dialog > footer button {
+  min-height: 40px;
+  padding: 8px 13px;
+  border: 1px solid var(--wb-line);
+  border-radius: 12px;
+  color: #554b40;
+  background: #f0e2d1;
+  cursor: pointer;
+}
+
 @media (max-width: 760px) {
   .workbench-body { grid-template-columns: 150px minmax(0, 1fr); }
   .workbench-sidebar { padding-inline: 8px; }
   .workbench-page-header { flex-direction: column; }
   .workbench-quick-actions { justify-content: flex-start; }
   .workbench-split { grid-template-columns: 1fr; }
+  .workbench-sync-overlay { padding: 12px; }
+  .workbench-sync-dialog > header, .workbench-sync-dialog > footer { padding: 13px 14px; }
+  .workbench-sync-dialog > footer { align-items: flex-start; flex-direction: column; }
+  .workbench-sync-dialog > footer > div { width: 100%; }
+  .workbench-sync-dialog > footer button:last-child { flex: 1; }
 }
