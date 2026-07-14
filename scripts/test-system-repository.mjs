@@ -7,6 +7,44 @@ import { SystemRepository } from "../dist-electron/systemRepository.js";
 import { TaskRepository } from "../dist-electron/taskRepository.js";
 import { FocusRepository } from "../dist-electron/focusRepository.js";
 import { classifyApplication } from "../dist-electron/activityClassifier.js";
+import { constrainCollapsedPosition, resolveDraggedWindowPosition } from "../dist-electron/windowPosition.js";
+
+const workArea = { x: 0, y: 0, width: 1920, height: 1040 };
+const collapsedSize = { width: 240, height: 260 };
+assert.deepEqual(
+  resolveDraggedWindowPosition(
+    { screenX: 1919, screenY: 500 },
+    { offsetX: 120, offsetY: 130 },
+    collapsedSize,
+    workArea,
+    true,
+  ),
+  { x: 1840, y: 370 },
+);
+assert.deepEqual(
+  resolveDraggedWindowPosition(
+    { screenX: 0, screenY: 500 },
+    { offsetX: 120, offsetY: 130 },
+    collapsedSize,
+    workArea,
+    true,
+  ),
+  { x: -160, y: 370 },
+);
+assert.deepEqual(
+  resolveDraggedWindowPosition(
+    { screenX: 1919, screenY: 1200 },
+    { offsetX: 120, offsetY: 130 },
+    { width: 430, height: 720 },
+    workArea,
+    false,
+  ),
+  { x: 1490, y: 320 },
+);
+assert.deepEqual(
+  constrainCollapsedPosition({ x: 5000, y: -200 }, collapsedSize, workArea),
+  { x: 1840, y: 0 },
+);
 
 const directory = mkdtempSync(path.join(tmpdir(), "stepbeast-system-"));
 const databasePath = path.join(directory, "pet.db");

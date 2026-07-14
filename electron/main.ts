@@ -10,6 +10,7 @@ import { ProjectRepository } from "./projectRepository.js";
 import { TaskRepository } from "./taskRepository.js";
 import { RuntimeCoordinator } from "./runtimeCoordinator.js";
 import { SystemRepository } from "./systemRepository.js";
+import { constrainCollapsedPosition, resolveDraggedWindowPosition } from "./windowPosition.js";
 
 const COLLAPSED_SIZE = { width: 240, height: 260 };
 const PANEL_SIZE = { width: 430, height: 720 };
@@ -19,6 +20,7 @@ type SavedWindowState = { x: number; y: number };
 type DragSession = { offsetX: number; offsetY: number };
 
 const dragSessions = new Map<number, DragSession>();
+const collapsedPositions = new Map<number, SavedWindowState>();
 let taskRepository: TaskRepository | null = null;
 let focusRepository: FocusRepository | null = null;
 let hermesClient: HermesClient | null = null;
@@ -51,6 +53,7 @@ function saveWindowState(window: BrowserWindow): void {
     x: Math.round(x + (width - COLLAPSED_SIZE.width) / 2),
     y: y + height - COLLAPSED_SIZE.height,
   };
+  collapsedPositions.set(window.id, collapsedPosition);
   try {
     fs.writeFileSync(getWindowStatePath(), JSON.stringify(collapsedPosition), "utf8");
   } catch {
@@ -60,7 +63,10 @@ function saveWindowState(window: BrowserWindow): void {
 
 function getInitialPosition(): SavedWindowState {
   const saved = readWindowState();
-  if (saved) return saved;
+  if (saved) {
+    const workArea = screen.getDisplayMatching({ ...saved, ...COLLAPSED_SIZE }).workArea;
+    return constrainCollapsedPosition(saved, COLLAPSED_SIZE, workArea);
+  }
 
   const workArea = screen.getPrimaryDisplay().workArea;
   return {
@@ -89,9 +95,14 @@ function createMainWindow(): void {
       nodeIntegration: false,
     },
   });
+  const windowId = mainWindow.id;
+  collapsedPositions.set(windowId, position);
 
   mainWindow.setAlwaysOnTop(true, "floating");
-  mainWindow.on("closed", () => { mainWindow = null; });
+  mainWindow.on("closed", () => {
+    collapsedPositions.delete(windowId);
+    if (mainWindow?.id === windowId) mainWindow = null;
+  });
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
   if (devServerUrl) {
@@ -119,10 +130,16 @@ ipcMain.on("pet-window:drag-move", (event, point: { screenX: number; screenY: nu
   const window = senderWindow(event);
   const session = window ? dragSessions.get(window.id) : null;
   if (!window || !session || !Number.isFinite(point.screenX) || !Number.isFinite(point.screenY)) return;
-  window.setPosition(
-    Math.round(point.screenX - session.offsetX),
-    Math.round(point.screenY - session.offsetY),
+  const bounds = window.getBounds();
+  const workArea = screen.getDisplayNearestPoint({ x: point.screenX, y: point.screenY }).workArea;
+  const next = resolveDraggedWindowPosition(
+    point,
+    session,
+    bounds,
+    workArea,
+    bounds.width === COLLAPSED_SIZE.width && bounds.height === COLLAPSED_SIZE.height,
   );
+  window.setPosition(next.x, next.y);
 });
 
 ipcMain.on("pet-window:drag-end", (event) => {
@@ -142,15 +159,27 @@ ipcMain.on("pet-window:set-expanded", (event, expanded: boolean, mode: "panel" |
     width: Math.min(requested.width, workArea.width),
     height: Math.min(requested.height, workArea.height),
   };
-  const proposedX = Math.round(current.x - (next.width - current.width) / 2);
-  const proposedY = current.y - (next.height - current.height);
-  window.setBounds({
-    // 展开尺寸更大，必须重新限制在当前显示器工作区内，避免面板被屏幕边缘裁掉。
-    x: Math.min(Math.max(proposedX, workArea.x), workArea.x + workArea.width - next.width),
-    y: Math.min(Math.max(proposedY, workArea.y), workArea.y + workArea.height - next.height),
-    ...next,
-  });
-  saveWindowState(window);
+  const isCollapsed = current.width === COLLAPSED_SIZE.width && current.height === COLLAPSED_SIZE.height;
+  if (expanded && isCollapsed) collapsedPositions.set(window.id, { x: current.x, y: current.y });
+
+  const remembered = !expanded ? collapsedPositions.get(window.id) : null;
+  if (remembered) {
+    const rememberedWorkArea = screen.getDisplayMatching({ ...remembered, ...COLLAPSED_SIZE }).workArea;
+    window.setBounds({
+      ...constrainCollapsedPosition(remembered, next, rememberedWorkArea),
+      ...next,
+    });
+  } else {
+    const proposedX = Math.round(current.x - (next.width - current.width) / 2);
+    const proposedY = current.y - (next.height - current.height);
+    window.setBounds({
+      // 展开尺寸必须完整显示，只有收起的宠物允许左右裁边。
+      x: Math.min(Math.max(proposedX, workArea.x), workArea.x + workArea.width - next.width),
+      y: Math.min(Math.max(proposedY, workArea.y), workArea.y + workArea.height - next.height),
+      ...next,
+    });
+  }
+  if (!expanded) saveWindowState(window);
 });
 
 ipcMain.on("pet-window:close", (event) => {
