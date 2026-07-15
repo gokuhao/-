@@ -2,11 +2,14 @@ export type ScreenPoint = { screenX: number; screenY: number };
 export type DragOffset = { offsetX: number; offsetY: number };
 export type WindowSize = { width: number; height: number };
 export type WorkArea = { x: number; y: number; width: number; height: number };
+export type DockSide = "left" | "right";
 
 export type PetVisibleBounds = {
   baseWindowWidth: number;
   left: number;
   right: number;
+  top: number;
+  bottom: number;
   revealRatio: number;
 };
 
@@ -15,6 +18,8 @@ export const COLLAPSED_PET_VISIBLE_BOUNDS: PetVisibleBounds = {
   baseWindowWidth: 240,
   left: 41,
   right: 198,
+  top: 53,
+  bottom: 251,
   revealRatio: 1 / 3,
 };
 const EDGE_SNAP_DISTANCE = 8;
@@ -86,6 +91,43 @@ export function horizontalCropLimits(
     maximumX: workArea.x + workArea.width - (visibleLeft + revealedPetWidth),
     revealedPetWidth,
   };
+}
+
+export function resolvePetPeekPosition(
+  position: { x: number; y: number },
+  size: WindowSize,
+  workArea: WorkArea,
+): { side: DockSide; x: number; y: number } | null {
+  const limits = horizontalCropLimits(size, workArea);
+  const scale = size.width / COLLAPSED_PET_VISIBLE_BOUNDS.baseWindowWidth;
+  const visibleLeft = Math.round(COLLAPSED_PET_VISIBLE_BOUNDS.left * scale);
+  const visibleRight = Math.round(COLLAPSED_PET_VISIBLE_BOUNDS.right * scale);
+
+  if (Math.abs(position.x - limits.minimumX) <= 1) {
+    return { side: "left", x: workArea.x - visibleLeft, y: position.y };
+  }
+  if (Math.abs(position.x - limits.maximumX) <= 1) {
+    return {
+      side: "right",
+      x: workArea.x + workArea.width - visibleRight,
+      y: position.y,
+    };
+  }
+  return null;
+}
+
+export function isPointWithinVisiblePet(
+  point: { x: number; y: number },
+  position: { x: number; y: number },
+  size: WindowSize,
+  margin = 0,
+): boolean {
+  const scale = size.width / COLLAPSED_PET_VISIBLE_BOUNDS.baseWindowWidth;
+  const left = position.x + Math.round(COLLAPSED_PET_VISIBLE_BOUNDS.left * scale) - margin;
+  const right = position.x + Math.round(COLLAPSED_PET_VISIBLE_BOUNDS.right * scale) + margin;
+  const top = position.y + Math.round(COLLAPSED_PET_VISIBLE_BOUNDS.top * scale) - margin;
+  const bottom = position.y + Math.round(COLLAPSED_PET_VISIBLE_BOUNDS.bottom * scale) + margin;
+  return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {

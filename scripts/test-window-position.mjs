@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import {
   constrainCollapsedPosition,
   horizontalCropLimits,
+  isPointWithinVisiblePet,
   resolveDraggedWindowPosition,
+  resolvePetPeekPosition,
 } from "../dist-electron/windowPosition.js";
 
 const workArea = { x: 0, y: 0, width: 1920, height: 1040 };
@@ -24,6 +26,17 @@ for (const [scale, expectedReveal] of [[0.75, 39], [1, 52], [1.25, 66]]) {
 const standardSize = { width: 240, height: 260 };
 const standardLimits = horizontalCropLimits(standardSize, workArea);
 assert.deepEqual(standardLimits, { minimumX: -146, maximumX: 1827, revealedPetWidth: 52 });
+assert.deepEqual(
+  resolvePetPeekPosition({ x: standardLimits.minimumX, y: 300 }, standardSize, workArea),
+  { side: "left", x: -41, y: 300 },
+);
+assert.deepEqual(
+  resolvePetPeekPosition({ x: standardLimits.maximumX, y: 300 }, standardSize, workArea),
+  { side: "right", x: 1722, y: 300 },
+);
+assert.equal(resolvePetPeekPosition({ x: 800, y: 300 }, standardSize, workArea), null);
+assert.equal(isPointWithinVisiblePet({ x: 1900, y: 500 }, { x: 1722, y: 300 }, standardSize), true);
+assert.equal(isPointWithinVisiblePet({ x: 1700, y: 500 }, { x: 1722, y: 300 }, standardSize), false);
 
 const snappedLeft = resolveDraggedWindowPosition(
   { screenX: 4, screenY: 400 },

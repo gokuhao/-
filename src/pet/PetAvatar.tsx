@@ -15,6 +15,8 @@ type PointerStart = { screenX: number; screenY: number };
 export function PetAvatar({ state, onStateChange, onTap }: PetAvatarProps): React.JSX.Element {
   const startRef = useRef<PointerStart | null>(null);
   const stateBeforeDrag = useRef<PetState>(state);
+  const showPeekTimerRef = useRef<number | null>(null);
+  const hidePeekTimerRef = useRef<number | null>(null);
   const [frame, setFrame] = useState(0);
   const animation = getSpriteAnimation(state);
   const safeFrame = frame % animation.frames;
@@ -22,6 +24,12 @@ export function PetAvatar({ state, onStateChange, onTap }: PetAvatarProps): Reac
   useEffect(() => {
     setFrame(0);
   }, [state]);
+
+  useEffect(() => () => {
+    if (showPeekTimerRef.current !== null) window.clearTimeout(showPeekTimerRef.current);
+    if (hidePeekTimerRef.current !== null) window.clearTimeout(hidePeekTimerRef.current);
+    window.stepBeast?.window.setPeeking(false);
+  }, []);
 
   useEffect(() => {
     const duration = animation.frameDurations?.[safeFrame]
@@ -41,6 +49,7 @@ export function PetAvatar({ state, onStateChange, onTap }: PetAvatarProps): Reac
 
   function handlePointerDown(event: PointerEvent<HTMLButtonElement>): void {
     if (event.button !== 0) return;
+    clearPeekTimers();
     event.currentTarget.setPointerCapture(event.pointerId);
     startRef.current = { screenX: event.screenX, screenY: event.screenY };
     stateBeforeDrag.current = state;
@@ -74,6 +83,31 @@ export function PetAvatar({ state, onStateChange, onTap }: PetAvatarProps): Reac
     onStateChange(stateBeforeDrag.current);
   }
 
+  function clearPeekTimers(): void {
+    if (showPeekTimerRef.current !== null) window.clearTimeout(showPeekTimerRef.current);
+    if (hidePeekTimerRef.current !== null) window.clearTimeout(hidePeekTimerRef.current);
+    showPeekTimerRef.current = null;
+    hidePeekTimerRef.current = null;
+  }
+
+  function handlePointerEnter(): void {
+    if (startRef.current) return;
+    clearPeekTimers();
+    showPeekTimerRef.current = window.setTimeout(() => {
+      showPeekTimerRef.current = null;
+      window.stepBeast?.window.setPeeking(true);
+    }, 140);
+  }
+
+  function handlePointerLeave(): void {
+    if (startRef.current) return;
+    clearPeekTimers();
+    hidePeekTimerRef.current = window.setTimeout(() => {
+      hidePeekTimerRef.current = null;
+      window.stepBeast?.window.setPeeking(false);
+    }, 220);
+  }
+
   return (
     <button
       className={`pet-avatar pet-avatar--${state}`}
@@ -83,6 +117,8 @@ export function PetAvatar({ state, onStateChange, onTap }: PetAvatarProps): Reac
       onPointerMove={handlePointerMove}
       onPointerUp={finishPointer}
       onPointerCancel={cancelPointer}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
       onDoubleClick={() => {
         const previousState = state;
         onStateChange("waving");

@@ -7,6 +7,7 @@ interface Window {
       startDrag: (screenX: number, screenY: number) => void;
       moveDrag: (screenX: number, screenY: number) => void;
       endDrag: () => void;
+      setPeeking: (peeking: boolean) => void;
       setExpanded: (expanded: boolean, mode?: "panel" | "workbench") => void;
       close: () => void;
     };
