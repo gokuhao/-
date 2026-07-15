@@ -524,6 +524,43 @@ button { font: inherit; }
 .workbench-coo-result > div { padding-top: 10px; border-top: 1px solid #48633f24; }
 .workbench-coo-result h3 { margin: 0 0 8px; font-size: 14px; }
 .workbench-coo-result p { margin: 5px 0; }
+.workbench-growth-page { display: grid; gap: 18px; }
+.reward-center { display: grid; gap: 14px; }
+.reward-overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.reward-overview article { display: grid; gap: 5px; padding: 16px; border: 1px solid var(--wb-line); border-radius: 17px; background: #ffffff82; }
+.reward-overview span, .reward-overview small { color: var(--wb-muted); font-size: 11px; }
+.reward-overview strong { font-size: 20px; }
+.reward-overview .reward-coin-card { color: #4e3c17; background: #f3d99e; }
+.reward-level-progress, .reward-progress > div:last-child { height: 8px; overflow: hidden; border-radius: 999px; background: #4a372014; }
+.reward-level-progress > span, .reward-progress > div:last-child > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6e9e61, #98bd78); }
+.reward-rule-note { margin: -5px 0 0; color: var(--wb-muted); font-size: 12px; line-height: 1.6; }
+.reward-goal-form { display: grid; grid-template-columns: minmax(150px, 1.2fr) minmax(120px, .7fr) minmax(120px, .7fr); gap: 9px; padding: 16px; border-radius: 18px; background: #ffffff70; }
+.reward-goal-form > div { grid-column: 1 / -1; display: grid; gap: 3px; }
+.reward-goal-form > div span, .reward-goal-form label span { color: var(--wb-muted); font-size: 11px; }
+.reward-goal-form > div strong { font-size: 15px; }
+.reward-goal-form input, .reward-goal-form select, .reward-fund-row input { min-width: 0; min-height: 40px; padding: 8px 11px; border: 1px solid var(--wb-line); border-radius: 11px; outline: 0; color: var(--wb-text); background: #fffaf2; }
+.reward-goal-form label { display: grid; gap: 5px; }
+.reward-goal-form > button { min-height: 40px; align-self: end; border: 0; border-radius: 11px; cursor: pointer; }
+.reward-goal-list { display: grid; gap: 11px; }
+.reward-goal-card { display: grid; gap: 13px; padding: 17px; border: 1px solid var(--wb-line); border-left: 5px solid #7fa270; border-radius: 18px; background: #ffffff80; }
+.reward-goal-card--legendary { border-left-color: #d39a3e; background: linear-gradient(135deg, #fffaf0, #f3d9a4); }
+.reward-goal-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.reward-goal-card > header > div { display: grid; gap: 4px; }
+.reward-goal-card > header span { color: var(--wb-muted); font-size: 10px; }
+.reward-goal-card h3 { margin: 0; font-size: 18px; }
+.reward-goal-card > header > strong { padding: 5px 8px; border-radius: 999px; color: #41613e; background: #dce9d3; font-size: 10px; }
+.reward-progress { display: grid; gap: 6px; }
+.reward-progress > div:first-child { display: flex; justify-content: space-between; gap: 12px; }
+.reward-progress span { color: var(--wb-muted); font-size: 11px; }
+.reward-progress strong { font-size: 11px; }
+.reward-fund-row { display: flex; align-items: end; gap: 8px; }
+.reward-fund-row label { flex: 1; display: grid; gap: 5px; }
+.reward-fund-row label span { color: var(--wb-muted); font-size: 10px; }
+.reward-fund-row button, .reward-redeem-button, .reward-confirm-row button { min-height: 40px; padding: 8px 12px; border: 1px solid var(--wb-line); border-radius: 11px; color: #554b40; background: #fffaf2; cursor: pointer; }
+.reward-redeem-button { justify-self: end; }
+.reward-fund-row button:disabled, .reward-redeem-button:disabled, .reward-confirm-row button:disabled { cursor: default; opacity: .45; }
+.reward-confirm-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.reward-confirm-row > span { margin-right: auto; color: var(--wb-muted); font-size: 11px; }
 .workbench-memory-page { display: grid; gap: 14px; }
 .workbench-memory-summary { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 15px; border-radius: 15px; background: #ffffff82; }
 .workbench-memory-summary > div { min-width: 0; }
@@ -658,6 +695,8 @@ button { font: inherit; }
   .workbench-page-header { flex-direction: column; }
   .workbench-quick-actions { justify-content: flex-start; }
   .workbench-split { grid-template-columns: 1fr; }
+  .reward-overview, .reward-goal-form { grid-template-columns: 1fr; }
+  .reward-goal-form > div { grid-column: auto; }
   .workbench-sync-overlay { padding: 12px; }
   .workbench-sync-dialog > header, .workbench-sync-dialog > footer { padding: 13px 14px; }
   .workbench-sync-dialog > footer { align-items: flex-start; flex-direction: column; }

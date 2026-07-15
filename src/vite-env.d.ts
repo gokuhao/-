@@ -60,6 +60,12 @@ interface Window {
         selectedCandidateKeys: string[],
       ) => Promise<StepBeastProjectSyncResult>;
     };
+    rewards: {
+      getSummary: () => Promise<StepBeastRewardSummary>;
+      createGoal: (input: StepBeastCreateRewardGoal) => Promise<StepBeastRewardSummary>;
+      updateFunding: (goalId: string, fundCurrentYuan: number) => Promise<StepBeastRewardSummary>;
+      redeem: (goalId: string) => Promise<StepBeastRewardSummary>;
+    };
     settings: {
       get: () => Promise<StepBeastSettings>;
       update: (input: StepBeastSettings) => Promise<StepBeastSettings>;
@@ -94,12 +100,43 @@ type StepBeastPetProfile = {
   totalXp: number;
   emotion: string;
   activeMode: number;
+  rewardCoins: number;
 };
 
 type StepBeastTaskCompletion = {
   task: StepBeastTask;
   profile: StepBeastPetProfile;
   xpGained: number;
+  coinsGained: number;
+};
+
+type StepBeastRewardCategory = "daily" | "experience" | "purchase" | "legendary";
+
+type StepBeastRewardGoal = {
+  id: string;
+  name: string;
+  category: StepBeastRewardCategory;
+  coinCost: number;
+  fundTargetYuan: number;
+  fundCurrentYuan: number;
+  status: "active" | "redeemed" | "archived";
+  createdAt: string;
+  updatedAt: string;
+  redeemedAt: string | null;
+};
+
+type StepBeastCreateRewardGoal = {
+  name: string;
+  category: StepBeastRewardCategory;
+  coinCost: number;
+  fundTargetYuan: number;
+};
+
+type StepBeastRewardSummary = {
+  profile: StepBeastPetProfile;
+  currentLevelStartXp: number;
+  nextLevelXp: number;
+  goals: StepBeastRewardGoal[];
 };
 
 type StepBeastFocusSession = {

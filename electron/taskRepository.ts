@@ -73,12 +73,14 @@ export type PetProfile = {
   totalXp: number;
   emotion: string;
   activeMode: number;
+  rewardCoins: number;
 };
 
 export type TaskCompletionResult = {
   task: TaskRecord;
   profile: PetProfile;
   xpGained: number;
+  coinsGained: number;
 };
 
 type TaskRow = {
@@ -109,6 +111,7 @@ type PetRow = {
   total_xp: number;
   emotion: string;
   active_mode: number;
+  reward_coins: number;
 };
 
 const DEFAULT_PET_ID = "stepbeast-default";
@@ -170,11 +173,13 @@ export class TaskRepository {
     if (!id) throw new Error("缺少任务 ID");
     const task = this.getById(id);
     if (task.status === "completed") {
-      return { task, profile: this.getPetProfile(), xpGained: 0 };
+      return { task, profile: this.getPetProfile(), xpGained: 0, coinsGained: 0 };
     }
 
     const now = new Date().toISOString();
-    const xpGained = rewardForMinutes(task.estimatedMinutes);
+    const reward = calculateTaskReward(task, this.getTodayRole(task.id));
+    const xpGained = reward.xp;
+    const coinsGained = reward.coins;
     const currentProfile = this.getPetProfile();
     const nextTotalXp = currentProfile.totalXp + xpGained;
     const nextLevel = levelForXp(nextTotalXp);
@@ -187,18 +192,18 @@ export class TaskRepository {
       `).run(xpGained, now, now, id);
       this.database.prepare(`
         INSERT INTO growth_events (
-          id, pet_id, task_id, event_type, xp_delta, reason, created_at
-        ) VALUES (?, ?, ?, 'task_completed', ?, ?, ?)
-      `).run(randomUUID(), DEFAULT_PET_ID, id, xpGained, `完成任务：${task.title}`, now);
+          id, pet_id, task_id, event_type, xp_delta, coin_delta, reason, created_at
+        ) VALUES (?, ?, ?, 'task_completed', ?, ?, ?, ?)
+      `).run(randomUUID(), DEFAULT_PET_ID, id, xpGained, coinsGained, reward.reason, now);
       this.database.prepare(`
         UPDATE pet_profiles
-        SET level = ?, total_xp = ?, emotion = 'happy', updated_at = ?
+        SET level = ?, total_xp = ?, reward_coins = reward_coins + ?, emotion = 'happy', updated_at = ?
         WHERE id = ?
-      `).run(nextLevel, nextTotalXp, now, DEFAULT_PET_ID);
+      `).run(nextLevel, nextTotalXp, coinsGained, now, DEFAULT_PET_ID);
       this.database.prepare(`
         INSERT INTO events (id, event_type, entity_type, entity_id, payload_json, created_at)
         VALUES (?, 'TaskCompleted', 'task', ?, ?, ?)
-      `).run(randomUUID(), id, JSON.stringify({ taskId: id, xpGained, totalXp: nextTotalXp }), now);
+      `).run(randomUUID(), id, JSON.stringify({ taskId: id, xpGained, coinsGained, totalXp: nextTotalXp }), now);
       this.database.exec("COMMIT");
     } catch (error) {
       this.database.exec("ROLLBACK");
@@ -208,12 +213,13 @@ export class TaskRepository {
       task: this.getById(id),
       profile: this.getPetProfile(),
       xpGained,
+      coinsGained,
     };
   }
 
   getPetProfile(): PetProfile {
     const row = this.database.prepare(`
-      SELECT id, name, level, total_xp, emotion, active_mode
+      SELECT id, name, level, total_xp, emotion, active_mode, reward_coins
       FROM pet_profiles WHERE id = ?
     `).get(DEFAULT_PET_ID) as unknown as PetRow | undefined;
     if (!row) throw new Error("没有找到宠物档案");
@@ -608,6 +614,52 @@ export class TaskRepository {
         throw error;
       }
     }
+
+    const rewardMigration = this.database.prepare("SELECT version FROM schema_migrations WHERE version = 9").get();
+    if (!rewardMigration) {
+      this.database.exec("BEGIN IMMEDIATE");
+      try {
+        this.database.exec(`
+          ALTER TABLE pet_profiles ADD COLUMN reward_coins INTEGER NOT NULL DEFAULT 0;
+          ALTER TABLE growth_events ADD COLUMN coin_delta INTEGER NOT NULL DEFAULT 0;
+          CREATE TABLE reward_goals (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            category TEXT NOT NULL CHECK (category IN ('daily', 'experience', 'purchase', 'legendary')),
+            coin_cost INTEGER NOT NULL CHECK (coin_cost > 0),
+            fund_target_cents INTEGER NOT NULL DEFAULT 0 CHECK (fund_target_cents >= 0),
+            fund_current_cents INTEGER NOT NULL DEFAULT 0 CHECK (fund_current_cents >= 0),
+            status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'redeemed', 'archived')),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            redeemed_at TEXT
+          );
+          CREATE TABLE reward_redemptions (
+            id TEXT PRIMARY KEY,
+            goal_id TEXT UNIQUE NOT NULL REFERENCES reward_goals(id),
+            coins_spent INTEGER NOT NULL,
+            fund_snapshot_cents INTEGER NOT NULL,
+            created_at TEXT NOT NULL
+          );
+          INSERT INTO schema_migrations (version, name, applied_at)
+          VALUES (9, 'add_reward_economy', datetime('now'));
+        `);
+        this.database.exec("COMMIT");
+      } catch (error) {
+        this.database.exec("ROLLBACK");
+        throw error;
+      }
+    }
+  }
+
+  private getTodayRole(taskId: string): PlanRole | null {
+    const row = this.database.prepare(`
+      SELECT i.role
+      FROM daily_plans p
+      JOIN daily_plan_items i ON i.daily_plan_id = p.id
+      WHERE p.plan_date = ? AND i.task_id = ?
+    `).get(localDateKey(), taskId) as { role: PlanRole } | undefined;
+    return row?.role ?? null;
   }
 
   private readPlan(date: string): TodayPlan {
@@ -730,6 +782,7 @@ function mapPetRow(row: PetRow): PetProfile {
     totalXp: row.total_xp,
     emotion: row.emotion,
     activeMode: row.active_mode,
+    rewardCoins: row.reward_coins,
   };
 }
 
@@ -744,6 +797,20 @@ export function levelForXp(totalXp: number): number {
   let level = 1;
   while (totalXp >= (100 * level * (level + 1)) / 2) level += 1;
   return level;
+}
+
+function calculateTaskReward(task: TaskRecord, role: PlanRole | null): { xp: number; coins: number; reason: string } {
+  const baseXp = rewardForMinutes(task.estimatedMinutes);
+  const roleBonus = role === "main" ? 20 : role === "support" ? 5 : 0;
+  const projectBonus = task.projectId ? 10 : 0;
+  const focusBonus = Math.min(20, Math.floor(task.actualMinutes / 15) * 5);
+  const xp = Math.min(100, baseXp + roleBonus + projectBonus + focusBonus);
+  const parts = ["完成任务"];
+  if (role === "main") parts.push("今日主线");
+  if (role === "support") parts.push("今日辅助");
+  if (projectBonus) parts.push("推进项目");
+  if (focusBonus) parts.push(`有效专注 ${task.actualMinutes} 分钟`);
+  return { xp, coins: xp, reason: `${parts.join(" + ")}：${task.title}` };
 }
 
 function localDateKey(): string {

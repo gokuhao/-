@@ -7,6 +7,7 @@ import { ObsidianReader } from "./obsidianReader.js";
 import { ObsidianWriter } from "./obsidianWriter.js";
 import { ObsidianProjectService } from "./obsidianProjectService.js";
 import { ProjectRepository } from "./projectRepository.js";
+import { RewardRepository } from "./rewardRepository.js";
 import { TaskRepository } from "./taskRepository.js";
 import { RuntimeCoordinator } from "./runtimeCoordinator.js";
 import { SystemRepository, type AppSettings } from "./systemRepository.js";
@@ -33,6 +34,7 @@ let hermesClient: HermesClient | null = null;
 let obsidianReader: ObsidianReader | null = null;
 let obsidianProjectService: ObsidianProjectService | null = null;
 let projectRepository: ProjectRepository | null = null;
+let rewardRepository: RewardRepository | null = null;
 let systemRepository: SystemRepository | null = null;
 let obsidianWriter: ObsidianWriter | null = null;
 let runtimeCoordinator: RuntimeCoordinator | null = null;
@@ -327,6 +329,26 @@ ipcMain.handle("project:confirm-sync", (event, proposal, selectedCandidateKeys: 
   return projectRepository.confirmSync({ proposal, selectedCandidateKeys });
 });
 
+ipcMain.handle("reward:get-summary", (event) => {
+  if (!senderWindow(event) || !rewardRepository) throw new Error("成长奖励系统尚未准备好");
+  return rewardRepository.getSummary();
+});
+
+ipcMain.handle("reward:create-goal", (event, input) => {
+  if (!senderWindow(event) || !rewardRepository) throw new Error("成长奖励系统尚未准备好");
+  return rewardRepository.createGoal(input);
+});
+
+ipcMain.handle("reward:update-funding", (event, goalId: string, fundCurrentYuan: number) => {
+  if (!senderWindow(event) || !rewardRepository) throw new Error("成长奖励系统尚未准备好");
+  return rewardRepository.updateFunding(goalId, fundCurrentYuan);
+});
+
+ipcMain.handle("reward:redeem", (event, goalId: string) => {
+  if (!senderWindow(event) || !rewardRepository) throw new Error("成长奖励系统尚未准备好");
+  return rewardRepository.redeem(goalId);
+});
+
 ipcMain.handle("settings:get", (event) => {
   if (!senderWindow(event) || !systemRepository) throw new Error("设置系统尚未准备好");
   return systemRepository.getSettings();
@@ -454,6 +476,7 @@ app.whenReady().then(() => {
   obsidianProjectService = new ObsidianProjectService(obsidianReader);
   projectRepository = new ProjectRepository(databasePath);
   systemRepository = new SystemRepository(databasePath);
+  rewardRepository = new RewardRepository(databasePath);
   const settings = systemRepository.getSettings();
   appearanceSettings = { petScale: settings.petScale, panelScale: settings.panelScale };
   obsidianWriter = new ObsidianWriter();
@@ -476,6 +499,8 @@ app.on("before-quit", () => {
   runtimeCoordinator = null;
   pendingReviews.clear();
   obsidianWriter = null;
+  rewardRepository?.close();
+  rewardRepository = null;
   systemRepository?.close();
   systemRepository = null;
   projectRepository?.close();

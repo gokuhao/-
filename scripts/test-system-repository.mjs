@@ -6,6 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 import { SystemRepository } from "../dist-electron/systemRepository.js";
 import { TaskRepository } from "../dist-electron/taskRepository.js";
 import { FocusRepository } from "../dist-electron/focusRepository.js";
+import { RewardRepository } from "../dist-electron/rewardRepository.js";
 import { classifyApplication } from "../dist-electron/activityClassifier.js";
 import { constrainCollapsedPosition, resolveDraggedWindowPosition } from "../dist-electron/windowPosition.js";
 
@@ -51,6 +52,7 @@ const databasePath = path.join(directory, "pet.db");
 const tasks = new TaskRepository(databasePath);
 const focus = new FocusRepository(databasePath);
 const system = new SystemRepository(databasePath);
+const rewards = new RewardRepository(databasePath);
 try {
   assert.equal(system.getSettings().activityTrackingEnabled, false);
   const updated = system.updateSettings({ ...system.getSettings(), morningReminderEnabled: true, activeMode: 4, petScale: 1.25, panelScale: 0.9 });
@@ -82,7 +84,18 @@ try {
   assert.equal(stopped.status, "completed");
   assert.equal(stopped.endedAt !== null, true);
   assert.equal(focus.getCurrent(), null);
-  tasks.complete(task.id);
+  tasks.setTodayRole(task.id, "main");
+  const completion = tasks.complete(task.id);
+  assert.equal(completion.xpGained, 40);
+  assert.equal(completion.coinsGained, 40);
+  assert.equal(completion.profile.rewardCoins, 40);
+  const withGoal = rewards.createGoal({ name: "测试奖励", category: "purchase", coinCost: 40, fundTargetYuan: 100 });
+  const goalId = withGoal.goals[0].id;
+  assert.throws(() => rewards.redeem(goalId), /资金进度/);
+  assert.equal(rewards.updateFunding(goalId, 100).goals[0].fundCurrentYuan, 100);
+  const redeemed = rewards.redeem(goalId);
+  assert.equal(redeemed.profile.rewardCoins, 0);
+  assert.equal(redeemed.goals[0].status, "redeemed");
   const facts = system.getDailyFacts();
   assert.equal(facts.completedTasks.some((item) => item.id === task.id), true);
 
@@ -99,12 +112,15 @@ try {
 } finally {
   system.close();
   focus.close();
+  rewards.close();
   tasks.close();
 }
 
 const inspection = new DatabaseSync(databasePath);
 assert.equal(inspection.prepare("SELECT name FROM schema_migrations WHERE version = 8").get()?.name, "add_settings_activity_reviews");
+assert.equal(inspection.prepare("SELECT name FROM schema_migrations WHERE version = 9").get()?.name, "add_reward_economy");
 assert.equal(inspection.prepare("SELECT COUNT(*) AS count FROM daily_reviews").get().count, 1);
+assert.equal(inspection.prepare("SELECT COUNT(*) AS count FROM reward_redemptions").get().count, 1);
 inspection.close();
 rmSync(directory, { recursive: true, force: true });
 console.log("设置、活动统计、每日事实和复盘幂等测试通过");

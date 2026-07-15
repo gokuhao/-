@@ -217,7 +217,9 @@ export function App(): React.JSX.Element {
         items: current.items.map((item) => item.task.id === id ? { ...item, task: completed } : item),
       } : current);
       setPetProfile(completion.profile);
-      if (completion.xpGained > 0) setRewardNotice(`+${completion.xpGained} XP`);
+      if (completion.xpGained > 0) {
+        setRewardNotice(`+${completion.xpGained} XP · +${completion.coinsGained} 步步币`);
+      }
       setPetState("happy");
     } catch (error) {
       setTaskError(errorMessage(error));

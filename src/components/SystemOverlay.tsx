@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { RewardCenter } from "./RewardCenter";
 
 export type SystemTool = "chat" | "more";
 type WorkbenchSection = "tasks" | "projects" | "chat" | "review" | "coo" | "memory" | "settings";
@@ -33,7 +34,7 @@ const SECTION_TITLES: Record<WorkbenchSection, { kicker: string; title: string; 
   projects: { kicker: "方向与进展", title: "项目", description: "默认只显示目标、阶段和关联任务。" },
   chat: { kicker: "Hermes 智能中枢", title: "AI 助手", description: "每次对话都尽量落到下一步行动。" },
   review: { kicker: "今日沉淀", title: "每日复盘", description: "确认后才会写入 Obsidian。" },
-  coo: { kicker: "过去 7 天", title: "成长与 AI COO", description: "数据只用来调整行动，不制造压力。" },
+  coo: { kicker: "成长经济与执行分析", title: "成长与奖励", description: "XP 记录成长，步步币兑换由你定义的现实奖励。" },
   memory: { kicker: "Obsidian 长期资产", title: "长期记忆", description: "只保留一个月后仍然有价值的信息。" },
   settings: { kicker: "个人化与连接", title: "设置", description: "提醒、感知和本地服务集中管理。" },
 };
@@ -73,6 +74,7 @@ export function SystemOverlay({
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [coo, setCoo] = useState<StepBeastCooAnalysis | null>(null);
   const [usage, setUsage] = useState<StepBeastUsageSummary | null>(null);
+  const [rewardSummary, setRewardSummary] = useState<StepBeastRewardSummary | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [taskFilter, setTaskFilter] = useState<"active" | "completed">("active");
   const [selectedProjectTasks, setSelectedProjectTasks] = useState<string[]>([]);
@@ -89,6 +91,7 @@ export function SystemOverlay({
     if (activeView === "coo") {
       void loadUsage();
       void loadProjects();
+      void loadRewards();
     }
     if (activeView === "memory") void loadNotes();
   }, [activeView]);
@@ -97,6 +100,10 @@ export function SystemOverlay({
     setSelectedProjectTasks([]);
     if (!projectProposal && activeView === "projects") void loadProjects();
   }, [projectProposal?.proposalId]);
+
+  useEffect(() => {
+    if (activeView === "coo") void loadRewards();
+  }, [petProfile?.totalXp]);
 
   async function loadSettings(): Promise<void> {
     try { setSettings(await window.stepBeast!.settings.get()); } catch (reason) { setError(messageOf(reason)); }
@@ -125,6 +132,28 @@ export function SystemOverlay({
 
   async function loadUsage(): Promise<void> {
     try { setUsage(await window.stepBeast!.activity.getSummary(7)); } catch (reason) { setError(messageOf(reason)); }
+  }
+
+  async function loadRewards(): Promise<void> {
+    try { setRewardSummary(await window.stepBeast!.rewards.getSummary()); } catch (reason) { setError(messageOf(reason)); }
+  }
+
+  async function createRewardGoal(input: StepBeastCreateRewardGoal): Promise<void> {
+    setBusy(true);
+    setError(null);
+    try { setRewardSummary(await window.stepBeast!.rewards.createGoal(input)); onNotice("奖励目标已创建"); } catch (reason) { setError(messageOf(reason)); } finally { setBusy(false); }
+  }
+
+  async function updateRewardFunding(goalId: string, fundCurrentYuan: number): Promise<void> {
+    setBusy(true);
+    setError(null);
+    try { setRewardSummary(await window.stepBeast!.rewards.updateFunding(goalId, fundCurrentYuan)); onNotice("资金进度已更新"); } catch (reason) { setError(messageOf(reason)); } finally { setBusy(false); }
+  }
+
+  async function redeemReward(goalId: string): Promise<void> {
+    setBusy(true);
+    setError(null);
+    try { setRewardSummary(await window.stepBeast!.rewards.redeem(goalId)); onNotice("现实奖励资格已解锁"); } catch (reason) { setError(messageOf(reason)); } finally { setBusy(false); }
   }
 
   async function generateReview(): Promise<void> {
@@ -215,13 +244,13 @@ export function SystemOverlay({
           </WorkbenchNavGroup>
           <WorkbenchNavGroup label="沉淀">
             <WorkbenchNavButton active={activeView === "review"} icon="✎" label="每日复盘" onClick={() => setActiveView("review")} />
-            <WorkbenchNavButton active={activeView === "coo"} icon="↗" label="成长数据" onClick={() => setActiveView("coo")} />
+            <WorkbenchNavButton active={activeView === "coo"} icon="↗" label="成长奖励" onClick={() => setActiveView("coo")} />
             <WorkbenchNavButton active={activeView === "memory"} icon="◇" label="长期记忆" onClick={() => setActiveView("memory")} />
           </WorkbenchNavGroup>
           <WorkbenchNavGroup label="系统">
             <WorkbenchNavButton active={activeView === "settings"} icon="⚙" label="设置" onClick={() => setActiveView("settings")} />
           </WorkbenchNavGroup>
-          <div className="workbench-pet-status"><span className="workbench-pet" aria-hidden="true" /><div><strong>小昊</strong><small>Lv.{petProfile?.level ?? 1} · {focusActive ? "专注中" : "陪伴中"}</small></div></div>
+          <div className="workbench-pet-status"><span className="workbench-pet" aria-hidden="true" /><div><strong>小昊</strong><small>Lv.{rewardSummary?.profile.level ?? petProfile?.level ?? 1} · {rewardSummary?.profile.rewardCoins ?? petProfile?.rewardCoins ?? 0} 币 · {focusActive ? "专注中" : "陪伴中"}</small></div></div>
         </aside>
 
         <main className="workbench-content">
@@ -280,6 +309,7 @@ export function SystemOverlay({
 
           {activeView === "coo" && (
             <div className="workbench-growth-page">
+              <RewardCenter summary={rewardSummary} busy={busy} onCreateGoal={createRewardGoal} onUpdateFunding={updateRewardFunding} onRedeem={redeemReward} />
               <div className="workbench-stats"><article><span>完成任务</span><strong>{completedCount}</strong><small>历史累计</small></article><article><span>应用记录</span><strong>{formatDuration(usage?.totalSeconds ?? 0)}</strong><small>最近 7 天</small></article><article><span>活跃项目</span><strong>{activeProjectCount}</strong><small>进行中或验证中</small></article></div>
               {!coo ? <div className="workbench-coo-card"><span className="workbench-badge">AI COO</span><h2>用真实执行数据判断下一步</h2><p>分析只读取本地任务、项目和已授权的应用使用统计。</p><button className="workbench-primary" type="button" disabled={busy} onClick={() => void analyzeCoo()}>{busy ? "分析中…" : "分析执行与项目风险"}</button></div> : <div className="workbench-coo-result"><span className="workbench-badge">AI COO 建议</span><h2>{coo.summary}</h2><div><h3>需要注意</h3>{coo.risks.length ? coo.risks.map((item, index) => <p key={`r${index}`}>· {item}</p>) : <p>暂无明确风险。</p>}</div><div><h3>下一步</h3>{coo.suggestions.map((item, index) => <p key={`s${index}`}>{index + 1}. {item}</p>)}</div></div>}
             </div>

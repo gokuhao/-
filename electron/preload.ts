@@ -100,6 +100,13 @@ contextBridge.exposeInMainWorld("stepBeast", {
     confirmSync: (proposal: ObsidianProjectProposal, selectedCandidateKeys: string[]) =>
       ipcRenderer.invoke("project:confirm-sync", proposal, selectedCandidateKeys),
   },
+  rewards: {
+    getSummary: () => ipcRenderer.invoke("reward:get-summary"),
+    createGoal: (input: unknown) => ipcRenderer.invoke("reward:create-goal", input),
+    updateFunding: (goalId: string, fundCurrentYuan: number) =>
+      ipcRenderer.invoke("reward:update-funding", goalId, fundCurrentYuan),
+    redeem: (goalId: string) => ipcRenderer.invoke("reward:redeem", goalId),
+  },
   settings: {
     get: () => ipcRenderer.invoke("settings:get"),
     update: (input: unknown) => ipcRenderer.invoke("settings:update", input),
