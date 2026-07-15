@@ -14,8 +14,9 @@
     "test:obsidian": "npm run build && node scripts/test-obsidian-reader.mjs",
     "test:obsidian-projects": "npm run build && node scripts/test-obsidian-projects.mjs",
     "test:project-sync": "npm run build && node scripts/test-project-sync.mjs",
+    "test:window-position": "npm run build && node scripts/test-window-position.mjs",
     "test:system": "npm run build && node scripts/test-system-repository.mjs && node scripts/test-obsidian-writer.mjs && node scripts/test-hermes-advanced.mjs",
-    "test:all": "npm run build && node scripts/test-daily-plan.mjs && node scripts/test-obsidian-reader.mjs && node scripts/test-obsidian-projects.mjs && node scripts/test-project-sync.mjs && node scripts/test-system-repository.mjs && node scripts/test-obsidian-writer.mjs && node scripts/test-hermes-advanced.mjs",
+    "test:all": "npm run build && node scripts/test-window-position.mjs && node scripts/test-daily-plan.mjs && node scripts/test-obsidian-reader.mjs && node scripts/test-obsidian-projects.mjs && node scripts/test-project-sync.mjs && node scripts/test-system-repository.mjs && node scripts/test-obsidian-writer.mjs && node scripts/test-hermes-advanced.mjs",
     "dist:win": "npm run build && electron-builder --win nsis --x64"
   },
   "dependencies": {

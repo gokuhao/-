@@ -20,7 +20,7 @@ assert.deepEqual(
     workArea,
     true,
   ),
-  { x: 1840, y: 370 },
+  { x: 1827, y: 370 },
 );
 assert.deepEqual(
   resolveDraggedWindowPosition(
@@ -30,7 +30,7 @@ assert.deepEqual(
     workArea,
     true,
   ),
-  { x: -160, y: 370 },
+  { x: -146, y: 370 },
 );
 assert.deepEqual(
   resolveDraggedWindowPosition(
@@ -44,7 +44,7 @@ assert.deepEqual(
 );
 assert.deepEqual(
   constrainCollapsedPosition({ x: 5000, y: -200 }, collapsedSize, workArea),
-  { x: 1840, y: 0 },
+  { x: 1827, y: 0 },
 );
 
 const directory = mkdtempSync(path.join(tmpdir(), "stepbeast-system-"));

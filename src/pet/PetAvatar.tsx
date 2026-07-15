@@ -10,7 +10,7 @@ type PetAvatarProps = {
   onTap: () => void;
 };
 
-type PointerStart = { x: number; y: number; screenX: number };
+type PointerStart = { screenX: number; screenY: number };
 
 export function PetAvatar({ state, onStateChange, onTap }: PetAvatarProps): React.JSX.Element {
   const startRef = useRef<PointerStart | null>(null);
@@ -42,7 +42,7 @@ export function PetAvatar({ state, onStateChange, onTap }: PetAvatarProps): Reac
   function handlePointerDown(event: PointerEvent<HTMLButtonElement>): void {
     if (event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    startRef.current = { x: event.clientX, y: event.clientY, screenX: event.screenX };
+    startRef.current = { screenX: event.screenX, screenY: event.screenY };
     stateBeforeDrag.current = state;
     window.stepBeast?.window.startDrag(event.screenX, event.screenY);
   }
@@ -62,7 +62,8 @@ export function PetAvatar({ state, onStateChange, onTap }: PetAvatarProps): Reac
     window.stepBeast?.window.endDrag();
     onStateChange(stateBeforeDrag.current);
 
-    const distance = Math.hypot(event.clientX - start.x, event.clientY - start.y);
+    // 窗口会跟随鼠标移动，必须使用屏幕坐标区分点击和拖拽。
+    const distance = Math.hypot(event.screenX - start.screenX, event.screenY - start.screenY);
     if (distance < 5) onTap();
   }
 

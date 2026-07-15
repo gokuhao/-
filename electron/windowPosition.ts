@@ -3,8 +3,20 @@ export type DragOffset = { offsetX: number; offsetY: number };
 export type WindowSize = { width: number; height: number };
 export type WorkArea = { x: number; y: number; width: number; height: number };
 
-// 收起状态保留 80px 透明窗口，对应约 56px 可见宠物，既有裁边感也能拖回来。
-export const EDGE_VISIBLE_WINDOW_WIDTH = 80;
+export type PetVisibleBounds = {
+  baseWindowWidth: number;
+  left: number;
+  right: number;
+  revealRatio: number;
+};
+
+// 取所有动画帧的稳定联合轮廓，避免播放动画时贴边位置左右抖动。
+export const COLLAPSED_PET_VISIBLE_BOUNDS: PetVisibleBounds = {
+  baseWindowWidth: 240,
+  left: 41,
+  right: 198,
+  revealRatio: 1 / 3,
+};
 const EDGE_SNAP_DISTANCE = 8;
 
 export function resolveDraggedWindowPosition(
@@ -18,12 +30,12 @@ export function resolveDraggedWindowPosition(
   const rawY = Math.round(point.screenY - offset.offsetY);
   const right = workArea.x + workArea.width;
   const bottom = workArea.y + workArea.height;
-  const visibleWidth = Math.min(EDGE_VISIBLE_WINDOW_WIDTH, size.width);
+  const cropLimits = horizontalCropLimits(size, workArea);
   const minimumX = allowHorizontalCrop
-    ? workArea.x - (size.width - visibleWidth)
+    ? cropLimits.minimumX
     : workArea.x;
   const maximumX = allowHorizontalCrop
-    ? right - visibleWidth
+    ? cropLimits.maximumX
     : right - size.width;
 
   let x = clamp(rawX, minimumX, maximumX);
@@ -42,18 +54,37 @@ export function constrainCollapsedPosition(
   size: WindowSize,
   workArea: WorkArea,
 ): { x: number; y: number } {
-  const visibleWidth = Math.min(EDGE_VISIBLE_WINDOW_WIDTH, size.width);
+  const cropLimits = horizontalCropLimits(size, workArea);
   return {
     x: clamp(
       Math.round(position.x),
-      workArea.x - (size.width - visibleWidth),
-      workArea.x + workArea.width - visibleWidth,
+      cropLimits.minimumX,
+      cropLimits.maximumX,
     ),
     y: clamp(
       Math.round(position.y),
       workArea.y,
       workArea.y + workArea.height - size.height,
     ),
+  };
+}
+
+export function horizontalCropLimits(
+  size: WindowSize,
+  workArea: WorkArea,
+  petBounds: PetVisibleBounds = COLLAPSED_PET_VISIBLE_BOUNDS,
+): { minimumX: number; maximumX: number; revealedPetWidth: number } {
+  const scale = size.width / petBounds.baseWindowWidth;
+  const visibleLeft = Math.round(petBounds.left * scale);
+  const visibleRight = Math.round(petBounds.right * scale);
+  const petWidth = Math.max(1, visibleRight - visibleLeft);
+  const revealedPetWidth = Math.max(1, Math.round(petWidth * petBounds.revealRatio));
+
+  return {
+    // 左侧露出宠物轮廓的最右一段，右侧露出轮廓的最左一段。
+    minimumX: workArea.x - (visibleRight - revealedPetWidth),
+    maximumX: workArea.x + workArea.width - (visibleLeft + revealedPetWidth),
+    revealedPetWidth,
   };
 }
 
