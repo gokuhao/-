@@ -297,7 +297,10 @@ type StepBeastSettings = {
   activeMode: 2 | 3 | 4;
   petScale: 0.75 | 1 | 1.25;
   panelScale: 0.9 | 1 | 1.1;
+  edgeInteractionMode: StepBeastEdgeInteractionMode;
 };
+
+type StepBeastEdgeInteractionMode = "quiet" | "standard" | "lively";
 
 type StepBeastUsageSummary = {
   dateFrom: string;

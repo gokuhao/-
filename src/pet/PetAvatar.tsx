@@ -7,13 +7,14 @@ import { getSpriteAnimation } from "./petSprites";
 type PetAvatarProps = {
   state: PetState;
   dockState: StepBeastDockState;
+  edgeInteractionMode: StepBeastEdgeInteractionMode;
   onStateChange: (state: PetState) => void;
   onTap: () => void;
 };
 
 type PointerStart = { screenX: number; screenY: number };
 
-export function PetAvatar({ state, dockState, onStateChange, onTap }: PetAvatarProps): React.JSX.Element {
+export function PetAvatar({ state, dockState, edgeInteractionMode, onStateChange, onTap }: PetAvatarProps): React.JSX.Element {
   const startRef = useRef<PointerStart | null>(null);
   const stateBeforeDrag = useRef<PetState>(state);
   const showPeekTimerRef = useRef<number | null>(null);
@@ -35,14 +36,20 @@ export function PetAvatar({ state, dockState, onStateChange, onTap }: PetAvatarP
   }, [visualState]);
 
   useEffect(() => {
-    if (!dockState.peeking) {
+    if (!dockState.peeking || edgeInteractionMode !== "lively") {
       setPeekGreeting(false);
       return;
     }
     setPeekGreeting(true);
     const timer = window.setTimeout(() => setPeekGreeting(false), 900);
     return () => window.clearTimeout(timer);
-  }, [dockState.peeking]);
+  }, [dockState.peeking, edgeInteractionMode]);
+
+  useEffect(() => {
+    if (edgeInteractionMode !== "quiet") return;
+    clearPeekTimers();
+    window.stepBeast?.window.setPeeking(false);
+  }, [edgeInteractionMode]);
 
   useEffect(() => () => {
     if (showPeekTimerRef.current !== null) window.clearTimeout(showPeekTimerRef.current);
@@ -111,7 +118,7 @@ export function PetAvatar({ state, dockState, onStateChange, onTap }: PetAvatarP
   }
 
   function handlePointerEnter(): void {
-    if (startRef.current) return;
+    if (startRef.current || edgeInteractionMode === "quiet") return;
     clearPeekTimers();
     showPeekTimerRef.current = window.setTimeout(() => {
       showPeekTimerRef.current = null;

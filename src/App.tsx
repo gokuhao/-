@@ -8,6 +8,7 @@ import type { PetState } from "./pet/petMachine";
 const FOCUS_SECONDS = 25 * 60;
 const DEFAULT_APPEARANCE = { petScale: 1, panelScale: 1 } as const;
 const DEFAULT_DOCK_STATE: StepBeastDockState = { side: null, peeking: false };
+const DEFAULT_EDGE_INTERACTION_MODE: StepBeastEdgeInteractionMode = "standard";
 
 export function App(): React.JSX.Element {
   const [expanded, setExpanded] = useState(false);
@@ -36,6 +37,7 @@ export function App(): React.JSX.Element {
   const [activeTool, setActiveTool] = useState<SystemTool | null>(null);
   const [appearance, setAppearance] = useState<{ petScale: number; panelScale: number }>(DEFAULT_APPEARANCE);
   const [dockState, setDockState] = useState<StepBeastDockState>(DEFAULT_DOCK_STATE);
+  const [edgeInteractionMode, setEdgeInteractionMode] = useState<StepBeastEdgeInteractionMode>(DEFAULT_EDGE_INTERACTION_MODE);
 
   const taskRoles = Object.fromEntries(
     (todayPlan?.items ?? []).map((item) => [item.task.id, item.role]),
@@ -82,8 +84,12 @@ export function App(): React.JSX.Element {
 
   useEffect(() => {
     if (!window.stepBeast) return;
-    void window.stepBeast.settings.get().then((settings) => setAppearance(settings)).catch(() => undefined);
-    return window.stepBeast.settings.onChanged((settings) => setAppearance(settings));
+    const applySettings = (settings: StepBeastSettings) => {
+      setAppearance(settings);
+      setEdgeInteractionMode(settings.edgeInteractionMode);
+    };
+    void window.stepBeast.settings.get().then(applySettings).catch(() => undefined);
+    return window.stepBeast.settings.onChanged(applySettings);
   }, []);
 
   useEffect(() => {
@@ -526,11 +532,16 @@ export function App(): React.JSX.Element {
 
       {!activeTool && <div className="pet-stage">
         <div className={`pet-speech ${rewardNotice ? "pet-speech--reward" : ""}`} aria-live="polite">
-          {rewardNotice ?? (expanded ? "陪你把这一件事做完" : "点我，开始今天")}
+          {rewardNotice ?? (expanded
+            ? "陪你把这一件事做完"
+            : dockState.peeking && edgeInteractionMode === "lively"
+              ? "小昊，我在这儿。要开始下一步吗？"
+              : "点我，开始今天")}
         </div>
         <PetAvatar
           state={petState}
           dockState={dockState}
+          edgeInteractionMode={edgeInteractionMode}
           onStateChange={setPetState}
           onTap={() => setExpanded((value) => !value)}
         />

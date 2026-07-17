@@ -55,14 +55,17 @@ const system = new SystemRepository(databasePath);
 const rewards = new RewardRepository(databasePath);
 try {
   assert.equal(system.getSettings().activityTrackingEnabled, false);
-  const updated = system.updateSettings({ ...system.getSettings(), morningReminderEnabled: true, activeMode: 4, petScale: 1.25, panelScale: 0.9 });
+  assert.equal(system.getSettings().edgeInteractionMode, "standard");
+  const updated = system.updateSettings({ ...system.getSettings(), morningReminderEnabled: true, activeMode: 4, petScale: 1.25, panelScale: 0.9, edgeInteractionMode: "lively" });
   assert.equal(updated.morningReminderEnabled, true);
   assert.equal(updated.activeMode, 4);
   assert.equal(updated.petScale, 1.25);
   assert.equal(updated.panelScale, 0.9);
+  assert.equal(updated.edgeInteractionMode, "lively");
   assert.throws(() => system.updateSettings({ ...updated, morningTime: "25:70" }), /时间无效/);
   assert.throws(() => system.updateSettings({ ...updated, petScale: 2 }), /宠物大小无效/);
   assert.throws(() => system.updateSettings({ ...updated, panelScale: 0.5 }), /窗口大小无效/);
+  assert.throws(() => system.updateSettings({ ...updated, edgeInteractionMode: "unknown" }), /边缘互动模式无效/);
 
   system.recordUsage("Visual Studio Code", "work", 30);
   system.recordUsage("Visual Studio Code", "work", 30);
