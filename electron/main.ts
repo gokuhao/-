@@ -16,6 +16,7 @@ import {
   isPointWithinVisiblePet,
   resolveDraggedWindowPosition,
   resolvePetPeekPosition,
+  type DockSide,
 } from "./windowPosition.js";
 
 const BASE_WINDOW_SIZES = {
@@ -34,7 +35,8 @@ type DragSession = {
 };
 type WindowMode = keyof typeof BASE_WINDOW_SIZES;
 type AppearanceSettings = Pick<AppSettings, "petScale" | "panelScale">;
-type PeekState = { dockedX: number; peekX: number; peeking: boolean };
+type PeekState = { side: DockSide; dockedX: number; peekX: number; peeking: boolean };
+type DockUiState = { side: DockSide | null; peeking: boolean };
 
 const dragSessions = new Map<number, DragSession>();
 const collapsedPositions = new Map<number, SavedWindowState>();
@@ -42,6 +44,7 @@ const windowModes = new Map<number, WindowMode>();
 const peekStates = new Map<number, PeekState>();
 const peekAnimations = new Map<number, ReturnType<typeof setInterval>>();
 const peekHoverMonitors = new Map<number, ReturnType<typeof setInterval>>();
+const dockUiStates = new Map<number, DockUiState>();
 let appearanceSettings: AppearanceSettings = { petScale: 1, panelScale: 1 };
 let taskRepository: TaskRepository | null = null;
 let focusRepository: FocusRepository | null = null;
@@ -124,12 +127,14 @@ function createMainWindow(): void {
   const windowId = mainWindow.id;
   collapsedPositions.set(windowId, position);
   windowModes.set(windowId, "collapsed");
+  mainWindow.webContents.on("did-finish-load", () => publishDockState(mainWindow));
 
   mainWindow.setAlwaysOnTop(true, "floating");
   mainWindow.on("closed", () => {
     stopPeekAnimation(windowId);
     stopPeekHoverMonitor(windowId);
     peekStates.delete(windowId);
+    dockUiStates.delete(windowId);
     collapsedPositions.delete(windowId);
     windowModes.delete(windowId);
     if (mainWindow?.id === windowId) mainWindow = null;
@@ -153,6 +158,27 @@ function windowSizeForMode(mode: WindowMode): { width: number; height: number } 
   return { width: Math.round(base.width * scale), height: Math.round(base.height * scale) };
 }
 
+function resolveDockUiState(window: BrowserWindow | null): DockUiState {
+  if (!window || window.isDestroyed() || windowModes.get(window.id) !== "collapsed") {
+    return { side: null, peeking: false };
+  }
+  const peekState = peekStates.get(window.id);
+  if (peekState) return { side: peekState.side, peeking: peekState.peeking };
+
+  const bounds = window.getBounds();
+  const workArea = screen.getDisplayMatching(bounds).workArea;
+  const docked = resolvePetPeekPosition(bounds, bounds, workArea);
+  return { side: docked?.side ?? null, peeking: false };
+}
+
+function publishDockState(window: BrowserWindow | null, state = resolveDockUiState(window)): void {
+  if (!window || window.isDestroyed()) return;
+  const previous = dockUiStates.get(window.id);
+  if (previous?.side === state.side && previous.peeking === state.peeking) return;
+  dockUiStates.set(window.id, state);
+  if (!window.webContents.isDestroyed()) window.webContents.send("pet-window:dock-state-changed", state);
+}
+
 function stopPeekAnimation(windowId: number): void {
   const timer = peekAnimations.get(windowId);
   if (timer) clearInterval(timer);
@@ -168,6 +194,7 @@ function stopPeekHoverMonitor(windowId: number): void {
 function retractPeek(window: BrowserWindow, state: PeekState): void {
   state.peeking = false;
   stopPeekHoverMonitor(window.id);
+  publishDockState(window, { side: state.side, peeking: false });
   animateWindowX(window, state.dockedX, () => {
     if (!state.peeking) peekStates.delete(window.id);
   });
@@ -239,7 +266,10 @@ function resizeWindowForAppearance(window: BrowserWindow): void {
         y: Math.min(Math.max(proposed.y, workArea.y), workArea.y + workArea.height - next.height),
       };
   window.setBounds({ ...position, ...next });
-  if (mode === "collapsed") saveWindowState(window);
+  if (mode === "collapsed") {
+    saveWindowState(window);
+    publishDockState(window);
+  }
 }
 
 ipcMain.on("pet-window:drag-start", (event, point: { screenX: number; screenY: number }) => {
@@ -278,6 +308,8 @@ ipcMain.on("pet-window:drag-move", (event, point: { screenX: number; screenY: nu
     bounds.width === collapsedSize.width && bounds.height === collapsedSize.height,
   );
   window.setPosition(next.x, next.y);
+  const docked = resolvePetPeekPosition(next, bounds, workArea);
+  publishDockState(window, { side: docked?.side ?? null, peeking: false });
 });
 
 ipcMain.on("pet-window:drag-end", (event) => {
@@ -291,6 +323,7 @@ ipcMain.on("pet-window:drag-end", (event) => {
     return;
   }
   saveWindowState(window);
+  publishDockState(window);
 });
 
 ipcMain.on("pet-window:set-peeking", (event, peeking: boolean) => {
@@ -305,6 +338,7 @@ ipcMain.on("pet-window:set-peeking", (event, peeking: boolean) => {
     }
     currentState.peeking = peeking;
     if (peeking) {
+      publishDockState(window, { side: currentState.side, peeking: true });
       animateWindowX(window, currentState.peekX);
       startPeekHoverMonitor(window, currentState);
     } else {
@@ -319,8 +353,9 @@ ipcMain.on("pet-window:set-peeking", (event, peeking: boolean) => {
   const target = resolvePetPeekPosition(bounds, bounds, workArea);
   if (!target) return;
 
-  const state: PeekState = { dockedX: bounds.x, peekX: target.x, peeking: true };
+  const state: PeekState = { side: target.side, dockedX: bounds.x, peekX: target.x, peeking: true };
   peekStates.set(window.id, state);
+  publishDockState(window, { side: state.side, peeking: true });
   animateWindowX(window, state.peekX);
   startPeekHoverMonitor(window, state);
 });
@@ -365,7 +400,10 @@ ipcMain.on("pet-window:set-expanded", (event, expanded: boolean, mode: "panel" |
   }
   windowModes.set(window.id, targetMode);
   if (!expanded) saveWindowState(window);
+  publishDockState(window);
 });
+
+ipcMain.handle("pet-window:get-dock-state", (event) => resolveDockUiState(senderWindow(event)));
 
 ipcMain.on("pet-window:close", (event) => {
   senderWindow(event)?.close();

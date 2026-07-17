@@ -6,24 +6,43 @@ import { getSpriteAnimation } from "./petSprites";
 
 type PetAvatarProps = {
   state: PetState;
+  dockState: StepBeastDockState;
   onStateChange: (state: PetState) => void;
   onTap: () => void;
 };
 
 type PointerStart = { screenX: number; screenY: number };
 
-export function PetAvatar({ state, onStateChange, onTap }: PetAvatarProps): React.JSX.Element {
+export function PetAvatar({ state, dockState, onStateChange, onTap }: PetAvatarProps): React.JSX.Element {
   const startRef = useRef<PointerStart | null>(null);
   const stateBeforeDrag = useRef<PetState>(state);
   const showPeekTimerRef = useRef<number | null>(null);
   const hidePeekTimerRef = useRef<number | null>(null);
+  const [peekGreeting, setPeekGreeting] = useState(false);
   const [frame, setFrame] = useState(0);
-  const animation = getSpriteAnimation(state);
+  const inwardState: PetState | null = dockState.side === "left"
+    ? "running-right"
+    : dockState.side === "right"
+      ? "running-left"
+      : null;
+  const visualState: PetState = peekGreeting || state === "waving" ? "waving" : inwardState ?? state;
+  const freezeInwardPose = inwardState !== null && visualState === inwardState;
+  const animation = getSpriteAnimation(visualState);
   const safeFrame = frame % animation.frames;
 
   useEffect(() => {
     setFrame(0);
-  }, [state]);
+  }, [visualState]);
+
+  useEffect(() => {
+    if (!dockState.peeking) {
+      setPeekGreeting(false);
+      return;
+    }
+    setPeekGreeting(true);
+    const timer = window.setTimeout(() => setPeekGreeting(false), 900);
+    return () => window.clearTimeout(timer);
+  }, [dockState.peeking]);
 
   useEffect(() => () => {
     if (showPeekTimerRef.current !== null) window.clearTimeout(showPeekTimerRef.current);
@@ -32,6 +51,7 @@ export function PetAvatar({ state, onStateChange, onTap }: PetAvatarProps): Reac
   }, []);
 
   useEffect(() => {
+    if (freezeInwardPose) return;
     const duration = animation.frameDurations?.[safeFrame]
       ?? (safeFrame === animation.frames - 1
         ? animation.lastFrameDuration
@@ -40,7 +60,7 @@ export function PetAvatar({ state, onStateChange, onTap }: PetAvatarProps): Reac
       setFrame((current) => (current + 1) % animation.frames);
     }, duration);
     return () => window.clearTimeout(timer);
-  }, [animation, frame, safeFrame]);
+  }, [animation, frame, freezeInwardPose, safeFrame]);
 
   const spriteStyle = {
     "--sprite-column": `${(safeFrame / 7) * 100}%`,
@@ -110,7 +130,7 @@ export function PetAvatar({ state, onStateChange, onTap }: PetAvatarProps): Reac
 
   return (
     <button
-      className={`pet-avatar pet-avatar--${state}`}
+      className={`pet-avatar pet-avatar--${visualState}`}
       type="button"
       aria-label={`步步兽，当前状态：${PET_STATE_LABELS[state]}`}
       onPointerDown={handlePointerDown}

@@ -8,6 +8,8 @@ interface Window {
       moveDrag: (screenX: number, screenY: number) => void;
       endDrag: () => void;
       setPeeking: (peeking: boolean) => void;
+      getDockState: () => Promise<StepBeastDockState>;
+      onDockStateChanged: (callback: (state: StepBeastDockState) => void) => () => void;
       setExpanded: (expanded: boolean, mode?: "panel" | "workbench") => void;
       close: () => void;
     };
@@ -85,6 +87,11 @@ interface Window {
     runtime: { onReminder: (callback: (message: string) => void) => () => void };
   };
 }
+
+type StepBeastDockState = {
+  side: "left" | "right" | null;
+  peeking: boolean;
+};
 
 type StepBeastHermesStatus = {
   state: "ready" | "online" | "offline" | "misconfigured";

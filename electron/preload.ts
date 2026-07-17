@@ -42,6 +42,8 @@ type ObsidianProjectProposal = {
   }>;
 };
 
+type DockState = { side: "left" | "right" | null; peeking: boolean };
+
 contextBridge.exposeInMainWorld("stepBeast", {
   platform: process.platform,
   window: {
@@ -51,6 +53,12 @@ contextBridge.exposeInMainWorld("stepBeast", {
       ipcRenderer.send("pet-window:drag-move", { screenX, screenY }),
     endDrag: () => ipcRenderer.send("pet-window:drag-end"),
     setPeeking: (peeking: boolean) => ipcRenderer.send("pet-window:set-peeking", peeking),
+    getDockState: () => ipcRenderer.invoke("pet-window:get-dock-state"),
+    onDockStateChanged: (callback: (state: DockState) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, state: DockState) => callback(state);
+      ipcRenderer.on("pet-window:dock-state-changed", listener);
+      return () => ipcRenderer.removeListener("pet-window:dock-state-changed", listener);
+    },
     setExpanded: (expanded: boolean, mode: "panel" | "workbench" = "panel") =>
       ipcRenderer.send("pet-window:set-expanded", expanded, mode),
     close: () => ipcRenderer.send("pet-window:close"),
