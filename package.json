@@ -46,15 +46,17 @@
     "npmRebuild": false,
     "directories": { "output": "release" },
     "files": ["dist/**/*", "dist-electron/**/*", "package.json"],
+    "extraResources": [{ "from": "build/tray-icon.png", "to": "tray-icon.png" }],
     "asarUnpack": ["node_modules/get-windows/lib/binding/**/*"],
     "win": {
+      "icon": "build/icon.ico",
       "target": [{ "target": "nsis", "arch": ["x64"] }],
       "artifactName": "StepBeast-Setup-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
+      "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
       "shortcutName": "步步兽"
     }

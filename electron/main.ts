@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, screen } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { FocusRepository } from "./focusRepository.js";
@@ -57,7 +57,12 @@ let systemRepository: SystemRepository | null = null;
 let obsidianWriter: ObsidianWriter | null = null;
 let runtimeCoordinator: RuntimeCoordinator | null = null;
 let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let isQuitting = false;
 const pendingReviews = new Map<string, DailyReviewProposal>();
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!hasSingleInstanceLock) app.quit();
 
 function getWindowStatePath(): string {
   return path.join(app.getPath("userData"), "window-state.json");
@@ -130,6 +135,13 @@ function createMainWindow(): void {
   mainWindow.webContents.on("did-finish-load", () => publishDockState(mainWindow));
 
   mainWindow.setAlwaysOnTop(true, "floating");
+  mainWindow.on("show", updateTrayMenu);
+  mainWindow.on("hide", updateTrayMenu);
+  mainWindow.on("close", (event) => {
+    if (isQuitting) return;
+    event.preventDefault();
+    hideMainWindow();
+  });
   mainWindow.on("closed", () => {
     stopPeekAnimation(windowId);
     stopPeekHoverMonitor(windowId);
@@ -146,6 +158,95 @@ function createMainWindow(): void {
   } else {
     void mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
   }
+}
+
+function showMainWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    if (app.isReady()) createMainWindow();
+  } else {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  }
+  updateTrayMenu();
+}
+
+function hideMainWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  saveWindowState(mainWindow);
+  mainWindow.hide();
+  updateTrayMenu();
+}
+
+function toggleMainWindow(): void {
+  if (mainWindow?.isVisible()) hideMainWindow();
+  else showMainWindow();
+}
+
+function trayIconPath(): string {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "tray-icon.png")
+    : path.join(app.getAppPath(), "build", "tray-icon.png");
+}
+
+function createTray(): void {
+  if (tray && !tray.isDestroyed()) return;
+  const icon = nativeImage.createFromPath(trayIconPath()).resize({ width: 32, height: 32 });
+  if (icon.isEmpty()) throw new Error("托盘图标读取失败");
+  tray = new Tray(icon);
+  tray.setToolTip("步步兽 · 小昊的个人 AI OS");
+  tray.on("click", toggleMainWindow);
+  updateTrayMenu();
+}
+
+function updateTrayMenu(): void {
+  if (!tray || tray.isDestroyed()) return;
+  const visible = mainWindow?.isVisible() ?? false;
+  const autoLaunch = systemRepository?.getSettings().autoLaunch ?? false;
+  tray.setContextMenu(Menu.buildFromTemplate([
+    {
+      label: visible ? "隐藏步步兽" : "显示步步兽",
+      click: toggleMainWindow,
+    },
+    {
+      label: app.isPackaged ? "开机自动启动" : "开机自动启动（安装版）",
+      type: "checkbox",
+      checked: autoLaunch,
+      enabled: app.isPackaged,
+      click: (item) => updateAutoLaunch(item.checked),
+    },
+    { type: "separator" },
+    {
+      label: "重新启动",
+      click: () => {
+        app.relaunch();
+        requestQuit();
+      },
+    },
+    {
+      label: "彻底退出",
+      click: requestQuit,
+    },
+  ]));
+}
+
+function updateAutoLaunch(enabled: boolean): void {
+  if (!systemRepository || !app.isPackaged) return;
+  const settings = systemRepository.updateSettings({
+    ...systemRepository.getSettings(),
+    autoLaunch: enabled,
+  });
+  app.setLoginItemSettings({ openAtLogin: enabled });
+  mainWindow?.webContents.send("settings:changed", settings);
+  updateTrayMenu();
+}
+
+function requestQuit(): void {
+  if (isQuitting) return;
+  isQuitting = true;
+  if (tray && !tray.isDestroyed()) tray.destroy();
+  tray = null;
+  app.quit();
 }
 
 function senderWindow(event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): BrowserWindow | null {
@@ -406,7 +507,7 @@ ipcMain.on("pet-window:set-expanded", (event, expanded: boolean, mode: "panel" |
 ipcMain.handle("pet-window:get-dock-state", (event) => resolveDockUiState(senderWindow(event)));
 
 ipcMain.on("pet-window:close", (event) => {
-  senderWindow(event)?.close();
+  if (senderWindow(event)) requestQuit();
 });
 
 ipcMain.handle("task:list", (event) => {
@@ -540,6 +641,7 @@ ipcMain.handle("settings:update", (event, input) => {
   window.webContents.send("settings:changed", settings);
   // 开发模式不写 Windows 开机启动项，避免调试版本污染系统设置。
   if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: settings.autoLaunch });
+  updateTrayMenu();
   return settings;
 });
 
@@ -639,7 +741,9 @@ ipcMain.handle("focus:abandon", (event, id: string) => {
   return focusRepository.abandon(id);
 });
 
-app.whenReady().then(() => {
+if (hasSingleInstanceLock) app.on("second-instance", showMainWindow);
+
+if (hasSingleInstanceLock) app.whenReady().then(() => {
   try {
     process.loadEnvFile(path.join(app.getAppPath(), ".env"));
   } catch {
@@ -657,7 +761,9 @@ app.whenReady().then(() => {
   const settings = systemRepository.getSettings();
   appearanceSettings = { petScale: settings.petScale, panelScale: settings.panelScale };
   obsidianWriter = new ObsidianWriter();
+  if (process.platform === "win32") app.setAppUserModelId("com.stepbeast.desktop");
   createMainWindow();
+  createTray();
   runtimeCoordinator = new RuntimeCoordinator({
     repository: systemRepository,
     onReminder: (message) => mainWindow?.webContents.send("runtime:reminder", message),
@@ -665,13 +771,14 @@ app.whenReady().then(() => {
   runtimeCoordinator.start();
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow();
-    }
+    showMainWindow();
   });
 });
 
 app.on("before-quit", () => {
+  isQuitting = true;
+  if (tray && !tray.isDestroyed()) tray.destroy();
+  tray = null;
   runtimeCoordinator?.stop();
   runtimeCoordinator = null;
   pendingReviews.clear();
@@ -692,7 +799,7 @@ app.on("before-quit", () => {
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
+  if (isQuitting && process.platform !== "darwin") {
     app.quit();
   }
 });
