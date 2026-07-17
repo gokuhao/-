@@ -68,8 +68,20 @@ npm run dist:win
 - `npm run dev`：启动开发版；适合继续调试。
 - `npm run test:system`：用临时数据库和临时 Vault 验证设置、复盘、路径安全及 Hermes 输出校验。
 - `npm run dist:win`：生成 `release/StepBeast-Setup-0.1.0-x64.exe`。当前安装包未使用商业代码签名证书，Windows 可能显示信誉提示。
-- 安装程序会创建名为“步步兽”的桌面和开始菜单快捷方式；开发模式不会修改桌面快捷方式或 Windows 开机启动项。
+- 安装程序会创建名为“步步兽”的桌面和开始菜单快捷方式；开发版使用独立的“步步兽-开发版”桌面入口，两者不会互相覆盖。
 - Hermes 与 Obsidian 的地址、Key、Vault 路径继续放在本机 `.env` 或系统环境变量，不进入 Git 或安装包。
+
+### Windows 开发版桌面入口
+
+项目根目录的 `start-dev.bat` 会进入正确目录并运行 `npm run dev`。开发期间保留命令窗口是有意设计：窗口用于显示 Vite、TypeScript 和 Electron 的启动日志，方便出现问题时直接定位原因。
+
+首次创建或需要重建桌面入口时运行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\create-dev-shortcut.ps1
+```
+
+完成后双击桌面的“步步兽-开发版”即可启动。重复双击只会唤醒现有宠物；关闭窗口会隐藏到托盘，选择托盘菜单中的“彻底退出”会同时结束桌宠和开发服务。
 
 ## 文档入口
 
